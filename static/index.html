@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock API 管理</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mock API 管理平台</h1>
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索服务名称或URL...">
+                </div>
+                <select class="filter-select" id="methodFilter">
+                    <option value="">全部方法</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+                <button class="btn btn-primary" onclick="addNewAPI()">
+                    <span>➕</span> 新增接口
+                </button>
+                <button class="btn btn-danger" id="batchDeleteBtn" onclick="batchDelete()" disabled>
+                    <span>🗑️</span> 批量删除
+                </button>
+            </div>
+        </div>
+        <div class="api-list" id="apiList"></div>
+    </div>
+
+    <!-- 响应体编辑弹窗 -->
+    <div class="modal" id="responseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📝 编辑响应体</h3>
+                <button class="modal-close" onclick="closeModal('responseModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea class="modal-textarea" id="responseEditor" placeholder='{"code": 200, "data": {}, "message": "success"}'></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="formatJSON()">格式化</button>
+                <button class="btn btn-secondary" onclick="closeModal('responseModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveResponse()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 请求头编辑弹窗 -->
+    <div class="modal" id="headersModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📋 编辑请求头</h3>
+                <button class="modal-close" onclick="closeModal('headersModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea class="modal-textarea" id="headersEditor" placeholder='{"Content-Type": "application/json"}'></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="formatHeadersJSON()">格式化</button>
+                <button class="btn btn-secondary" onclick="closeModal('headersModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveHeaders()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志弹窗 -->
+    <div class="modal" id="logsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📊 请求日志</h3>
+                <button class="modal-close" onclick="closeModal('logsModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="log-list" id="logList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+                <button class="btn btn-primary" onclick="closeModal('logsModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
