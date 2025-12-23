@@ -111,6 +111,7 @@ function renderList() {
                 <div class="update-time" title="${api.updatedAt || ''}">${formatTime(api.updatedAt)}</div>
                 <div class="actions">
                     <button class="action-btn ${isEditing ? 'btn-save' : 'btn-edit'}" onclick="toggleEdit('${api.id}')">${isEditing ? '保存' : '编辑'}</button>
+                    <button class="action-btn btn-copy" onclick="copyCurl('${api.id}')" title="复制CURL命令">CURL</button>
                     <button class="action-btn btn-log" onclick="openLogs('${api.id}')">日志</button>
                     <button class="action-btn btn-delete" onclick="deleteAPI('${api.id}')">删除</button>
                 </div>
@@ -651,6 +652,48 @@ function showToast(msg, type = '') {
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+// 复制CURL命令
+function copyCurl(id) {
+    const api = apis.find(a => a.id === id);
+    if (!api) return;
+    
+    let curlCmd = `curl -X ${api.method}`;
+    
+    // 添加URL
+    curlCmd += ` "http://localhost:${window.location.port || '8344'}${api.url}"`;
+    
+    // 添加请求头
+    if (api.headers && Object.keys(api.headers).length > 0) {
+        for (const [key, value] of Object.entries(api.headers)) {
+            curlCmd += ` \\\n  -H "${key}: ${value}"`;
+        }
+    }
+    
+    // 如果是POST/PUT/DELETE请求，添加示例请求体
+    if (['POST', 'PUT', 'DELETE'].includes(api.method)) {
+        curlCmd += ` \\\n  -d '{"key": "value"}'`;
+    }
+    
+    // 复制到剪贴板
+    navigator.clipboard.writeText(curlCmd).then(() => {
+        showToast('CURL命令已复制到剪贴板', 'success');
+    }).catch(err => {
+        // 降级方案：创建临时文本区域
+        const textArea = document.createElement('textarea');
+        textArea.value = curlCmd;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast('CURL命令已复制到剪贴板', 'success');
+        } catch (err) {
+            showToast('复制失败，请手动复制', 'error');
+            console.log('CURL命令:', curlCmd);
+        }
+        document.body.removeChild(textArea);
+    });
 }
 
 // 初始化事件监听

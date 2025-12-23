@@ -442,6 +442,49 @@ func dynamicHandler(w http.ResponseWriter, r *http.Request) {
 func handleMockRequest(w http.ResponseWriter, r *http.Request, api *MockAPI) {
 	reqLogger.Printf("Mock请求: %s %s", r.Method, r.URL.Path)
 
+	// 检查HTTP方法是否匹配
+	if r.Method != api.Method {
+		reqLogger.Printf("方法不匹配: 期望 %s, 实际 %s", api.Method, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(fmt.Sprintf(`{"error": "Method not allowed. Expected %s, got %s"}`, api.Method, r.Method)))
+		
+		// 记录错误日志
+		logEntry := LogEntry{
+			Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
+			Method:     r.Method,
+			URL:        r.URL.String(),
+			Headers:    make(map[string]string),
+			StatusCode: 405,
+			Error:      fmt.Sprintf("Method not allowed. Expected %s, got %s", api.Method, r.Method),
+		}
+		
+		for k, v := range r.Header {
+			if len(v) > 0 {
+				logEntry.Headers[k] = v[0]
+			}
+		}
+		
+		if r.Body != nil {
+			body, _ := io.ReadAll(r.Body)
+			logEntry.RequestBody = string(body)
+		}
+		
+		apiMutex.Lock()
+		for i := range apis {
+			if apis[i].ID == api.ID {
+				apis[i].Logs = append(apis[i].Logs, logEntry)
+				if len(apis[i].Logs) > 100 {
+					apis[i].Logs = apis[i].Logs[len(apis[i].Logs)-100:]
+				}
+				break
+			}
+		}
+		saveAPIsToFile()
+		apiMutex.Unlock()
+		return
+	}
+
 	logEntry := LogEntry{
 		Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
 		Method:     r.Method,
