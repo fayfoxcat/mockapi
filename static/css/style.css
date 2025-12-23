@@ -258,4 +258,5 @@ select.detail-input {
 .toast { position: fixed; bottom: 24px; right: 24px; padding: 14px 28px; background: #333; color: white; border-radius: 10px; font-size: 14px; z-index: 2000; animation: toastIn 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
 .toast.success { background: linear-gradient(135deg, #4caf50, #45a049); }
 .toast.error { background: linear-gradient(135deg, #f44336, #d32f2f); }
+.toast.info { background: linear-gradient(135deg, #2196f3, #1976d2); }
 @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

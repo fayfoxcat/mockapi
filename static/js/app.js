@@ -676,24 +676,95 @@ function copyCurl(id) {
         curlCmd += ` \\\n  -d '{"key": "value"}'`;
     }
     
-    // 复制到剪贴板
-    navigator.clipboard.writeText(curlCmd).then(() => {
-        showToast('CURL命令已复制到剪贴板', 'success');
-    }).catch(err => {
-        // 降级方案：创建临时文本区域
-        const textArea = document.createElement('textarea');
-        textArea.value = curlCmd;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
+    // 兼容性检查和复制到剪贴板
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        // 现代浏览器支持 Clipboard API
+        navigator.clipboard.writeText(curlCmd).then(() => {
             showToast('CURL命令已复制到剪贴板', 'success');
-        } catch (err) {
-            showToast('复制失败，请手动复制', 'error');
-            console.log('CURL命令:', curlCmd);
+        }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopyTextToClipboard(curlCmd);
+        });
+    } else {
+        // 降级方案：使用传统方法
+        fallbackCopyTextToClipboard(curlCmd);
+    }
+}
+
+// 降级复制方案
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    
+    // 避免在页面上显示
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showToast('CURL命令已复制到剪贴板', 'success');
+        } else {
+            showCurlModal(text);
         }
-        document.body.removeChild(textArea);
-    });
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showCurlModal(text);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// 显示CURL命令弹窗（最后的降级方案）
+function showCurlModal(curlCmd) {
+    // 创建弹窗
+    const modal = document.createElement('div');
+    modal.className = 'modal show';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📋 CURL命令</h3>
+                <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 10px; color: #666;">请手动复制以下命令：</p>
+                <textarea class="modal-textarea" readonly style="min-height: 150px;">${curlCmd}</textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">关闭</button>
+                <button class="btn btn-primary" onclick="selectAllText(this)">全选</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 自动选中文本
+    const textarea = modal.querySelector('textarea');
+    textarea.focus();
+    textarea.select();
+    
+    showToast('复制功能不可用，请手动复制', 'error');
+}
+
+// 全选文本辅助函数
+function selectAllText(button) {
+    const textarea = button.closest('.modal').querySelector('textarea');
+    textarea.focus();
+    textarea.select();
+    showToast('文本已全选，请按 Ctrl+C 复制', 'info');
 }
 
 // 初始化事件监听
