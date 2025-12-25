@@ -25,6 +25,13 @@ const (
 	AppVersion = "1.0.0"
 )
 
+// 构建时注入的变量
+var (
+	Version   = "1.0.0"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
 // MockAPI 模拟接口定义
 type MockAPI struct {
 	ID           string            `json:"id"`
@@ -107,7 +114,9 @@ func main() {
 	case "help":
 		showHelp()
 	case "version":
-		fmt.Printf("%s version %s\n", AppName, AppVersion)
+		fmt.Printf("%s version %s\n", AppName, Version)
+		fmt.Printf("Build time: %s\n", BuildTime)
+		fmt.Printf("Git commit: %s\n", GitCommit)
 	default:
 		fmt.Printf("未知命令: %s\n", cmd)
 		showHelp()
@@ -164,7 +173,12 @@ func showHelp() {
   ./%s stop             # 停止服务
 
 数据目录: 可执行文件所在目录下的 data/ 和 logs/
-`, AppName, AppVersion, AppName, AppName, AppName, AppName, AppName, AppName, AppName)
+
+版本信息:
+  版本: %s
+  构建时间: %s
+  Git提交: %s
+`, AppName, Version, AppName, AppName, AppName, AppName, AppName, AppName, AppName, Version, BuildTime, GitCommit)
 }
 
 func getPid() int {
@@ -307,7 +321,7 @@ func runServer() {
 	// 打印启动信息
 	printBanner()
 	appLogger.Printf("========================================")
-	appLogger.Printf("  %s v%s", AppName, AppVersion)
+	appLogger.Printf("  %s v%s", AppName, Version)
 	appLogger.Printf("========================================")
 	appLogger.Printf("  PID:      %d", os.Getpid())
 	appLogger.Printf("  端口:     %s", serverPort)
@@ -315,6 +329,8 @@ func runServer() {
 	appLogger.Printf("  数据文件: %s", dataFile)
 	appLogger.Printf("  日志目录: %s", logDir)
 	appLogger.Printf("  访问地址: http://localhost:%s", serverPort)
+	appLogger.Printf("  构建时间: %s", BuildTime)
+	appLogger.Printf("  Git提交:  %s", GitCommit)
 	appLogger.Printf("========================================")
 
 	// 加载API数据
