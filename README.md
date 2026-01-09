@@ -1,6 +1,6 @@
 # Mock API Server 🚀
 
-一个功能强大、易于使用的Mock API管理平台，支持快速创建、管理和测试API接口。
+一个功能简单、易于使用的MockAPI工具，支持快速创建、管理和测试API接口。
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Go](https://img.shields.io/badge/go-1.19+-00ADD8.svg)
