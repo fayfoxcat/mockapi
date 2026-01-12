@@ -1,9 +1,9 @@
 use anyhow::Result;
 use axum::{
     body::Body,
-    extract::{State},
+    extract::State,
     http::{HeaderMap, Method, Uri},
-    response::{Json, Response},
+    response::Response,
     routing::{get, post},
     Router,
 };
@@ -20,13 +20,11 @@ use tracing::info;
 
 mod api;
 mod embedded;
-mod error;
 mod models;
 mod utils;
 
 use api::*;
 use embedded::*;
-use error::*;
 use models::*;
 use utils::*;
 
@@ -50,8 +48,6 @@ struct Cli {
 enum Commands {
     /// 显示版本信息
     Version,
-    /// 显示帮助信息
-    Help,
 }
 
 /// 应用状态
@@ -121,10 +117,6 @@ async fn main() -> Result<()> {
         }
         Some(Commands::Version) => {
             show_version();
-            Ok(())
-        }
-        Some(Commands::Help) => {
-            show_help();
             Ok(())
         }
     }
@@ -235,39 +227,4 @@ fn print_banner() {
 fn show_version() {
     println!("{} version {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     println!("Build time: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
-}
-
-fn show_help() {
-    println!(
-        r#"{} v{} - Mock API 管理平台
-
-用法:
-  {} [选项] [命令]
-
-命令:
-  version   显示版本信息
-  help      显示帮助信息
-
-选项:
-  -p <port> 指定服务端口(默认: 8344)
-
-环境变量:
-  PORT      服务端口(优先级低于 -p 参数)
-
-示例:
-  ./{}                  # 前台启动(默认端口)
-  ./{} -p 9000          # 前台启动(指定端口)
-
-数据目录: 可执行文件所在目录下的 data/
-
-版本信息:
-  版本: {}
-"#,
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
-    );
 }

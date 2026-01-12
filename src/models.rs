@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -126,12 +125,6 @@ pub struct SaveApiResponse {
 #[derive(Debug, Serialize)]
 pub struct SuccessResponse {
     pub success: bool,
-}
-
-/// 错误响应
-#[derive(Debug, Serialize)]
-pub struct ErrorResponse {
-    pub error: String,
 }
 
 /// 日志查询参数

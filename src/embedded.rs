@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     extract::{Path, State},
     http::{header, HeaderMap, Method, StatusCode, Uri},
-    response::{Html, Response},
+    response::Response,
 };
 use rust_embed::RustEmbed;
 use std::collections::HashMap;

@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>, Json<models::ClearLogsRequest>) -> impl std::future::Future<Output = Result<Json<models::SuccessResponse>, axum::http::StatusCode>> {api::clear_logs_handler}
-fn(axum::extract::State<AppState>, Json<models::ClearLogsRequest>) -> impl std::future::Future<Output = Result<Json<models::SuccessResponse>, axum::http::StatusCode>> {api::clear_logs_handler}: Handler<_, _>

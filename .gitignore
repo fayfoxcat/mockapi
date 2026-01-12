@@ -6,6 +6,7 @@ mock-api-server.exe
 # 构建产物
 dist/
 build/
+target/
 
 # 数据文件
 data/mock_apis.json
