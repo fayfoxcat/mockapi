@@ -28,7 +28,7 @@ use embedded::*;
 use models::*;
 use utils::*;
 
-/// Mock API Server - 功能简单、易于使用的MockAPI工具
+/// Mock API Server - 高性能的API模拟服务器
 #[derive(Parser)]
 #[command(name = "mock-api-server")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -50,7 +50,7 @@ enum Commands {
     Version,
 }
 
-/// 应用状态
+/// 应用程序状态管理
 #[derive(Clone)]
 pub struct AppState {
     pub apis: Arc<RwLock<Vec<MockApi>>>,
@@ -59,6 +59,7 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// 创建新的应用状态实例
     pub fn new() -> Result<Self> {
         let base_dir = get_base_dir()?;
         let data_dir = base_dir.join("data");
@@ -71,6 +72,7 @@ impl AppState {
         })
     }
 
+    /// 从文件加载API配置
     pub async fn load_apis(&self) -> Result<()> {
         let content = match fs::read_to_string(&self.data_file).await {
             Ok(content) => content,
@@ -88,6 +90,7 @@ impl AppState {
         Ok(())
     }
 
+    /// 保存API配置到文件
     pub async fn save_apis(&self) -> Result<()> {
         let apis = self.apis.read().unwrap().clone();
         let content = serde_json::to_string_pretty(&apis)?;
@@ -100,7 +103,7 @@ impl AppState {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // 设置日志
+    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -112,7 +115,7 @@ async fn main() -> Result<()> {
 
     match cli.command {
         None => {
-            // 前台运行
+            // 启动服务器
             run_server(cli.port, state).await
         }
         Some(Commands::Version) => {
@@ -122,11 +125,12 @@ async fn main() -> Result<()> {
     }
 }
 
+/// 运行HTTP服务器
 async fn run_server(port: u16, state: AppState) -> Result<()> {
-    // 初始化目录
+    // 初始化数据目录
     init_dirs(&state).await?;
 
-    // 打印启动信息
+    // 显示启动信息
     print_banner();
     info!("========================================");
     info!("  {} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
@@ -150,7 +154,7 @@ async fn run_server(port: u16, state: AppState) -> Result<()> {
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     
-    // 优雅关闭
+    // 启动服务并支持优雅关闭
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
@@ -158,9 +162,10 @@ async fn run_server(port: u16, state: AppState) -> Result<()> {
     Ok(())
 }
 
+/// 创建HTTP路由
 fn create_router(state: AppState) -> Router {
     Router::new()
-        // 静态文件服务
+        // 静态资源服务
         .route("/static/*path", get(serve_static))
         // API管理接口
         .route("/api/list", get(list_apis_handler))
@@ -169,12 +174,13 @@ fn create_router(state: AppState) -> Router {
         .route("/api/logs", get(get_logs_handler))
         .route("/api/clear-logs", post(clear_logs_handler))
         .route("/api/reorder", post(reorder_apis_handler))
-        // 动态路由处理所有其他请求
+        // 动态路由处理Mock API请求
         .fallback(dynamic_handler)
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
 
+/// 动态路由处理器，处理所有Mock API请求
 async fn dynamic_handler(
     State(state): State<AppState>,
     method: Method,
@@ -186,6 +192,7 @@ async fn dynamic_handler(
     embedded::dynamic_handler(State(state), method, uri, headers, body_str).await
 }
 
+/// 优雅关闭信号处理
 async fn shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -212,6 +219,7 @@ async fn shutdown_signal() {
     info!("收到关闭信号，正在优雅关闭...");
 }
 
+/// 显示启动横幅
 fn print_banner() {
     println!(
         r#"
@@ -224,6 +232,7 @@ fn print_banner() {
     );
 }
 
+/// 显示版本信息
 fn show_version() {
     println!("{} version {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     println!("Build time: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));

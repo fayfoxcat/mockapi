@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Mock API Server Rust版本构建脚本
+# Mock API Server 构建脚本
 # 支持多平台交叉编译
 
 set -e
@@ -10,7 +10,7 @@ VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
 BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-echo "🚀 开始构建 Mock API Server Rust版本 v${VERSION}"
+echo "🚀 开始构建 Mock API Server v${VERSION}"
 echo "📅 构建时间: ${BUILD_TIME}"
 echo "🔗 Git提交: ${GIT_COMMIT}"
 echo ""
@@ -60,14 +60,14 @@ build_for_target() {
     echo ""
 }
 
-# 检查Rust环境
+# 检查构建环境
 if ! command -v cargo >/dev/null 2>&1; then
-    echo "❌ 错误: 未找到Rust环境，请先安装Rust"
-    echo "   访问 https://rustup.rs/ 安装Rust"
+    echo "❌ 错误: 未找到构建环境，请先安装构建工具"
+    echo "   访问 https://rustup.rs/ 获取构建工具"
     exit 1
 fi
 
-echo "🔍 Rust版本: $(rustc --version)"
+echo "🔍 构建工具版本: $(rustc --version)"
 echo ""
 
 echo "🏗️  开始多平台构建..."

@@ -20,6 +20,7 @@ pub struct MockApi {
 }
 
 impl MockApi {
+    /// 创建新的Mock API实例
     pub fn new(name: String, method: String, url: String) -> Self {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         Self {
@@ -35,20 +36,22 @@ impl MockApi {
         }
     }
 
+    /// 更新时间戳
     pub fn update_timestamp(&mut self) {
         self.updated_at = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 
+    /// 添加请求日志
     pub fn add_log(&mut self, log: LogEntry) {
         self.logs.push(log);
-        // 保持最多100条日志
+        // 保持最多100条日志记录
         if self.logs.len() > 100 {
             self.logs.drain(0..self.logs.len() - 100);
         }
     }
 }
 
-/// 日志条目
+/// 请求日志条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
@@ -64,6 +67,7 @@ pub struct LogEntry {
 }
 
 impl LogEntry {
+    /// 创建新的日志条目
     pub fn new(
         method: String,
         url: String,
@@ -83,6 +87,8 @@ impl LogEntry {
         }
     }
 }
+
+// API请求和响应模型
 
 /// API保存请求
 #[derive(Debug, Deserialize)]

@@ -13,7 +13,7 @@ pub async fn list_apis_handler(State(state): State<AppState>) -> Json<Vec<MockAp
     Json(apis)
 }
 
-/// 保存API
+/// 保存API配置
 #[axum::debug_handler]
 pub async fn save_api_handler(
     State(state): State<AppState>,
@@ -77,7 +77,7 @@ pub async fn save_api_handler(
                 api: Some(response_api),
             }
         }
-    }; // RwLockWriteGuard is dropped here
+    }; // 锁在此处释放
     
     if let Err(e) = state.save_apis().await {
         error!("保存数据文件失败: {}", e);
@@ -87,7 +87,7 @@ pub async fn save_api_handler(
     Json(response).into_response()
 }
 
-/// 删除API
+/// 删除API配置
 pub async fn delete_api_handler(
     State(state): State<AppState>,
     Json(req): Json<DeleteApiRequest>,
@@ -99,7 +99,7 @@ pub async fn delete_api_handler(
             let removed = apis.remove(pos);
             info!("删除API: {} ({})", removed.name, removed.url);
         }
-    } // RwLockWriteGuard is dropped here
+    } // 锁在此处释放
     
     if let Err(e) = state.save_apis().await {
         error!("保存数据文件失败: {}", e);
@@ -109,7 +109,7 @@ pub async fn delete_api_handler(
     Json(SuccessResponse { success: true }).into_response()
 }
 
-/// 获取API日志
+/// 获取API请求日志
 pub async fn get_logs_handler(
     State(state): State<AppState>,
     Query(params): Query<LogsQuery>,
@@ -123,7 +123,7 @@ pub async fn get_logs_handler(
     }
 }
 
-/// 清空API日志
+/// 清空API请求日志
 pub async fn clear_logs_handler(
     State(state): State<AppState>,
     Json(req): Json<ClearLogsRequest>,
@@ -135,7 +135,7 @@ pub async fn clear_logs_handler(
             api.logs.clear();
             info!("清空日志: {}", api.name);
         }
-    } // RwLockWriteGuard is dropped here
+    } // 锁在此处释放
     
     if let Err(e) = state.save_apis().await {
         error!("保存数据文件失败: {}", e);
@@ -145,7 +145,7 @@ pub async fn clear_logs_handler(
     Json(SuccessResponse { success: true }).into_response()
 }
 
-/// 重新排序API
+/// 重新排序API列表
 pub async fn reorder_apis_handler(
     State(state): State<AppState>,
     Json(req): Json<ReorderRequest>,
@@ -172,7 +172,7 @@ pub async fn reorder_apis_handler(
         }
         
         info!("API列表重新排序");
-    } // RwLockWriteGuard is dropped here
+    } // 锁在此处释放
     
     if let Err(e) = state.save_apis().await {
         error!("保存数据文件失败: {}", e);
