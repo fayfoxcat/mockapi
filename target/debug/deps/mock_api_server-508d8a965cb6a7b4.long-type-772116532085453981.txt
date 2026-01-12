@@ -1,0 +1,2 @@
+fn(axum::extract::State<AppState>, Method, {type error}, HeaderMap, axum::body::Bytes) -> impl std::future::Future<Output = Response<{type error}>> {dynamic_handler}
+fn(axum::extract::State<AppState>, Method, {type error}, HeaderMap, axum::body::Bytes) -> impl std::future::Future<Output = Response<{type error}>> {dynamic_handler}: Handler<_, AppState>
