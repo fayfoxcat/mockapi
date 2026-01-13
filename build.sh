@@ -75,11 +75,9 @@ echo ""
 
 # Windows
 build_for_target "x86_64-pc-windows-gnu" "${APP_NAME}-windows-amd64"
-build_for_target "i686-pc-windows-gnu" "${APP_NAME}-windows-386"
 
 # Linux
 build_for_target "x86_64-unknown-linux-gnu" "${APP_NAME}-linux-amd64"
-build_for_target "i686-unknown-linux-gnu" "${APP_NAME}-linux-386"
 build_for_target "aarch64-unknown-linux-gnu" "${APP_NAME}-linux-arm64"
 
 # macOS
