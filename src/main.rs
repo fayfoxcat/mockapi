@@ -18,9 +18,6 @@ use tokio::{signal, time::{sleep, Duration}};
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn, error};
 
-#[cfg(unix)]
-use std::os::unix::io::AsRawFd;
-
 mod api;
 mod embedded;
 mod models;
