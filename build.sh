@@ -31,8 +31,8 @@ export CARGO_BUILD_JOBS=$PARALLEL_JOBS
 # 平台配置
 declare -A PLATFORMS=(
     ["x86_64-pc-windows-gnu"]="windows-amd64.exe"
-    ["x86_64-unknown-linux-gnu"]="linux-amd64"
-    ["aarch64-unknown-linux-gnu"]="linux-arm64"
+    ["x86_64-unknown-linux-musl"]="linux-amd64"
+    ["aarch64-unknown-linux-musl"]="linux-arm64"
 )
 
 # macOS平台（需要特殊处理）
@@ -155,16 +155,20 @@ build_target() {
     local build_cmd="cargo build --release --target=${target}"
     local binary_name="${PROJECT_NAME}"
     
-    # 为 Linux 目标添加静态链接以提高兼容性
-    if [[ "$target" == "x86_64-unknown-linux-gnu" ]]; then
-        export RUSTFLAGS="-C link-arg=-static-libgcc"
-    elif [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
-        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-        export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-        export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-        export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
-        export STRIP_aarch64_unknown_linux_gnu=aarch64-linux-gnu-strip
-        export RUSTFLAGS="-C link-arg=-static-libgcc"
+    # 为 musl 目标设置正确的链接器
+    if [[ "$target" == "x86_64-unknown-linux-musl" ]]; then
+        export CC_x86_64_unknown_linux_musl=musl-gcc
+        export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
+    elif [[ "$target" == "aarch64-unknown-linux-musl" ]]; then
+        # 检查是否有 aarch64 musl 交叉编译工具
+        if command -v aarch64-linux-musl-gcc >/dev/null 2>&1; then
+            export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+        else
+            echo -e "  ${YELLOW}⚠️  aarch64-linux-musl-gcc 未找到，尝试使用系统交叉编译器${NC}"
+            export CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
+        fi
     fi
     
     if [[ "$target" == *"windows"* ]]; then
@@ -208,17 +212,12 @@ build_target() {
     echo ""
     
     # 清理目标特定的环境变量
-    if [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
-        unset CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
-        unset CC_aarch64_unknown_linux_gnu
-        unset CXX_aarch64_unknown_linux_gnu
-        unset AR_aarch64_unknown_linux_gnu
-        unset STRIP_aarch64_unknown_linux_gnu
-    fi
-    
-    # 清理 RUSTFLAGS
-    if [[ "$target" == "x86_64-unknown-linux-gnu" || "$target" == "aarch64-unknown-linux-gnu" ]]; then
-        unset RUSTFLAGS
+    if [[ "$target" == "x86_64-unknown-linux-musl" ]]; then
+        unset CC_x86_64_unknown_linux_musl
+        unset CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER
+    elif [[ "$target" == "aarch64-unknown-linux-musl" ]]; then
+        unset CC_aarch64_unknown_linux_musl
+        unset CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER
     fi
     
     return 0
