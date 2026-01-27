@@ -616,13 +616,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "mock-api-server"
+name = "mockapi"
 version = "1.0.0"
 dependencies = [
  "anyhow",
  "axum",
  "chrono",
  "clap",
+ "libc",
  "mime_guess",
  "rust-embed",
  "serde",

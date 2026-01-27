@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 项目信息
-PROJECT_NAME="mock-api-server"
+PROJECT_NAME="mockapi"
 VERSION="1.0.0"
 DIST_DIR="dist"
 

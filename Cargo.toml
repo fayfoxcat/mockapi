@@ -1,16 +1,16 @@
 [package]
-name = "mock-api-server"
+name = "mockapi"
 version = "1.0.0"
 edition = "2021"
 authors = ["Mock API Team"]
 description = "高性能的API模拟服务器，支持快速创建、管理和测试API接口"
 license = "MIT"
-repository = "https://github.com/your-repo/mock-api-server"
+repository = "https://github.com/your-repo/mockapi"
 keywords = ["api", "mock", "server", "testing", "development"]
 categories = ["web-programming", "development-tools"]
 
 [[bin]]
-name = "mock-api-server"
+name = "mockapi"
 path = "src/main.rs"
 
 [dependencies]
@@ -44,6 +44,9 @@ mime_guess = "2.0"
 # 错误处理
 anyhow = "1.0"
 thiserror = "1.0"
+
+# Unix系统调用
+libc = "0.2"
 
 [profile.release]
 # 优化配置
