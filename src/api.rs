@@ -1,10 +1,11 @@
 use crate::{models::*, AppState};
 use axum::{
-    extract::{Query, State},
+    extract::{Multipart, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json},
 };
 use std::collections::HashMap;
+use tokio::fs;
 use tracing::{error, info};
 
 /// 获取API列表
@@ -37,6 +38,10 @@ pub async fn save_api_handler(
                 api.url = url;
                 api.headers = req.headers.unwrap_or_default();
                 api.response_body = req.response_body.unwrap_or_default();
+                api.response_type = req.response_type.unwrap_or_default();
+                api.file_name = req.file_name;
+                api.file_path = req.file_path;
+                api.content_type = req.content_type;
                 api.updated_at = now;
                 
                 info!("更新API: {} ({})", api.name, api.url);
@@ -50,6 +55,10 @@ pub async fn save_api_handler(
                 let mut new_api = MockApi::new(req.name, req.method, url);
                 new_api.headers = req.headers.unwrap_or_default();
                 new_api.response_body = req.response_body.unwrap_or_default();
+                new_api.response_type = req.response_type.unwrap_or_default();
+                new_api.file_name = req.file_name;
+                new_api.file_path = req.file_path;
+                new_api.content_type = req.content_type;
                 
                 info!("新增API: {} ({})", new_api.name, new_api.url);
                 
@@ -66,6 +75,10 @@ pub async fn save_api_handler(
             let mut new_api = MockApi::new(req.name, req.method, url);
             new_api.headers = req.headers.unwrap_or_default();
             new_api.response_body = req.response_body.unwrap_or_default();
+            new_api.response_type = req.response_type.unwrap_or_default();
+            new_api.file_name = req.file_name;
+            new_api.file_path = req.file_path;
+            new_api.content_type = req.content_type;
             
             info!("新增API: {} ({})", new_api.name, new_api.url);
             
@@ -180,4 +193,69 @@ pub async fn reorder_apis_handler(
     }
     
     Json(SuccessResponse { success: true }).into_response()
+}
+
+/// 文件上传处理器
+pub async fn upload_file_handler(
+    State(state): State<AppState>,
+    mut multipart: Multipart,
+) -> impl IntoResponse {
+    let uploads_dir = state.data_dir.join("uploads");
+    
+    // 确保上传目录存在
+    if let Err(e) = fs::create_dir_all(&uploads_dir).await {
+        error!("创建上传目录失败: {}", e);
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+
+    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
+        let name = field.name().unwrap_or("").to_string();
+        let filename = field.file_name().unwrap_or("").to_string();
+        let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
+        
+        if name == "file" && !filename.is_empty() {
+            let data = match field.bytes().await {
+                Ok(data) => data,
+                Err(e) => {
+                    error!("读取文件数据失败: {}", e);
+                    return StatusCode::BAD_REQUEST.into_response();
+                }
+            };
+
+            // 生成唯一文件名
+            let file_id = uuid::Uuid::new_v4().to_string();
+            let file_extension = std::path::Path::new(&filename)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("");
+            
+            let stored_filename = if file_extension.is_empty() {
+                file_id
+            } else {
+                format!("{}.{}", file_id, file_extension)
+            };
+            
+            let file_path = uploads_dir.join(&stored_filename);
+            
+            // 保存文件
+            if let Err(e) = fs::write(&file_path, &data).await {
+                error!("保存文件失败: {}", e);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+
+            info!("文件上传成功: {} -> {}", filename, stored_filename);
+
+            let response = FileUploadResponse {
+                success: true,
+                file_name: filename,
+                file_path: format!("uploads/{}", stored_filename),
+                content_type,
+            };
+
+            return Json(response).into_response();
+        }
+    }
+
+    error!("未找到有效的文件字段");
+    StatusCode::BAD_REQUEST.into_response()
 }

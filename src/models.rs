@@ -2,6 +2,20 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// 响应类型枚举
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResponseType {
+    Json,
+    File,
+}
+
+impl Default for ResponseType {
+    fn default() -> Self {
+        ResponseType::Json
+    }
+}
+
 /// Mock API 接口定义
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockApi {
@@ -12,6 +26,14 @@ pub struct MockApi {
     pub headers: HashMap<String, String>,
     #[serde(rename = "responseBody")]
     pub response_body: String,
+    #[serde(rename = "responseType", default)]
+    pub response_type: ResponseType,
+    #[serde(rename = "fileName", skip_serializing_if = "Option::is_none")]
+    pub file_name: Option<String>,
+    #[serde(rename = "filePath", skip_serializing_if = "Option::is_none")]
+    pub file_path: Option<String>,
+    #[serde(rename = "contentType", skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
     pub logs: Vec<LogEntry>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
@@ -30,6 +52,10 @@ impl MockApi {
             url,
             headers: HashMap::new(),
             response_body: String::new(),
+            response_type: ResponseType::Json,
+            file_name: None,
+            file_path: None,
+            content_type: None,
             logs: Vec::new(),
             created_at: now.clone(),
             updated_at: now,
@@ -62,6 +88,10 @@ pub struct LogEntry {
     pub request_body: String,
     #[serde(rename = "statusCode")]
     pub status_code: u16,
+    #[serde(rename = "clientIp")]
+    pub client_ip: String,
+    #[serde(rename = "userAgent")]
+    pub user_agent: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -74,6 +104,8 @@ impl LogEntry {
         headers: HashMap<String, String>,
         request_body: String,
         status_code: u16,
+        client_ip: String,
+        user_agent: String,
         error: Option<String>,
     ) -> Self {
         Self {
@@ -83,6 +115,8 @@ impl LogEntry {
             headers,
             request_body,
             status_code,
+            client_ip,
+            user_agent,
             error,
         }
     }
@@ -100,6 +134,14 @@ pub struct SaveApiRequest {
     pub headers: Option<HashMap<String, String>>,
     #[serde(rename = "responseBody")]
     pub response_body: Option<String>,
+    #[serde(rename = "responseType")]
+    pub response_type: Option<ResponseType>,
+    #[serde(rename = "fileName")]
+    pub file_name: Option<String>,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
+    #[serde(rename = "contentType")]
+    pub content_type: Option<String>,
 }
 
 /// API删除请求
@@ -137,4 +179,16 @@ pub struct SuccessResponse {
 #[derive(Debug, Deserialize)]
 pub struct LogsQuery {
     pub id: String,
+}
+
+/// 文件上传响应
+#[derive(Debug, Serialize)]
+pub struct FileUploadResponse {
+    pub success: bool,
+    #[serde(rename = "fileName")]
+    pub file_name: String,
+    #[serde(rename = "filePath")]
+    pub file_path: String,
+    #[serde(rename = "contentType")]
+    pub content_type: String,
 }

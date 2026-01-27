@@ -41,10 +41,35 @@
                 <button class="modal-close" onclick="closeModal('responseModal')">✕</button>
             </div>
             <div class="modal-body">
-                <textarea class="modal-textarea" id="responseEditor" placeholder='{"code": 200, "data": {}, "message": "success"}'></textarea>
+                <div class="response-type-selector">
+                    <label>
+                        <input type="radio" name="responseType" value="json" checked onchange="toggleResponseType('json')">
+                        JSON响应
+                    </label>
+                    <label>
+                        <input type="radio" name="responseType" value="file" onchange="toggleResponseType('file')">
+                        文件响应
+                    </label>
+                </div>
+                
+                <div id="jsonResponseSection">
+                    <textarea class="modal-textarea" id="responseEditor" placeholder='{"code": 200, "data": {}, "message": "success"}'></textarea>
+                </div>
+                
+                <div id="fileResponseSection" style="display: none;">
+                    <div class="file-upload-area">
+                        <input type="file" id="fileInput" accept="*/*" onchange="handleFileSelect(this)">
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <div class="file-name" id="fileName"></div>
+                            <div class="file-size" id="fileSize"></div>
+                            <div class="file-type" id="fileType"></div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="uploadFile()" id="uploadBtn" disabled>上传文件</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="formatJSON()">格式化</button>
+                <button class="btn btn-secondary" onclick="formatJSON()">格式化JSON</button>
                 <button class="btn btn-secondary" onclick="closeModal('responseModal')">取消</button>
                 <button class="btn btn-primary" onclick="saveResponse()">保存</button>
             </div>

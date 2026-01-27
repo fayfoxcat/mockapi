@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::{
     body::Body,
-    extract::State,
+    extract::{ConnectInfo, State},
     http::{HeaderMap, Method, Uri},
     response::Response,
     routing::{get, post},
@@ -174,6 +174,7 @@ fn create_router(state: AppState) -> Router {
         .route("/api/logs", get(get_logs_handler))
         .route("/api/clear-logs", post(clear_logs_handler))
         .route("/api/reorder", post(reorder_apis_handler))
+        .route("/api/upload", post(upload_file_handler))
         // 动态路由处理Mock API请求
         .fallback(dynamic_handler)
         .layer(CorsLayer::permissive())
@@ -183,13 +184,14 @@ fn create_router(state: AppState) -> Router {
 /// 动态路由处理器，处理所有Mock API请求
 async fn dynamic_handler(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     method: Method,
     uri: Uri,
     headers: HeaderMap,
     body: axum::body::Bytes,
 ) -> Response<Body> {
     let body_str = String::from_utf8_lossy(&body).to_string();
-    embedded::dynamic_handler(State(state), method, uri, headers, body_str).await
+    embedded::dynamic_handler(State(state), ConnectInfo(addr), method, uri, headers, body_str).await
 }
 
 /// 优雅关闭信号处理

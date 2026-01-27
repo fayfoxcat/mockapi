@@ -1,13 +1,14 @@
 use crate::{models::*, AppState};
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{ConnectInfo, Path, State},
     http::{header, HeaderMap, Method, StatusCode, Uri},
     response::Response,
 };
 use rust_embed::RustEmbed;
-use std::collections::HashMap;
-use tracing::{info, warn};
+use std::{collections::HashMap, net::SocketAddr};
+use tokio::fs;
+use tracing::{error, info, warn};
 
 #[derive(RustEmbed)]
 #[folder = "static/"]
@@ -33,6 +34,7 @@ pub async fn serve_static(Path(path): Path<String>) -> Result<Response<Body>, St
 /// 动态路由处理器
 pub async fn dynamic_handler(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     method: Method,
     uri: Uri,
     headers: HeaderMap,
@@ -63,7 +65,7 @@ pub async fn dynamic_handler(
     };
     
     if let Some(api) = matched_api {
-        handle_mock_request(state, method, uri, headers, body, api).await
+        handle_mock_request(state, addr, method, uri, headers, body, api).await
     } else {
         Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -75,13 +77,18 @@ pub async fn dynamic_handler(
 /// 处理Mock请求
 async fn handle_mock_request(
     state: AppState,
+    addr: SocketAddr,
     method: Method,
     uri: Uri,
     headers: HeaderMap,
     body: String,
     api: MockApi,
 ) -> Response<Body> {
-    info!("Mock请求: {} {}", method, uri.path());
+    info!("Mock请求: {} {} from {}", method, uri.path(), addr.ip());
+    
+    // 提取客户端信息
+    let client_ip = extract_client_ip(&headers, addr);
+    let user_agent = extract_user_agent(&headers);
     
     // 检查HTTP方法是否匹配
     if method.as_str() != api.method {
@@ -106,6 +113,8 @@ async fn handle_mock_request(
             request_headers,
             body,
             405,
+            client_ip,
+            user_agent,
             Some(format!("Method not allowed. Expected {}, got {}", api.method, method)),
         );
         
@@ -139,6 +148,8 @@ async fn handle_mock_request(
         request_headers,
         body,
         200,
+        client_ip,
+        user_agent,
         None,
     );
     
@@ -151,20 +162,124 @@ async fn handle_mock_request(
     }
     let _ = state.save_apis().await;
     
-    // 构建响应
-    let mut response_builder = Response::builder().status(StatusCode::OK);
-    
-    // 设置响应头
-    for (key, value) in &api.headers {
-        response_builder = response_builder.header(key, value);
+    // 根据响应类型构建响应
+    match api.response_type {
+        ResponseType::Json => {
+            // JSON响应
+            let mut response_builder = Response::builder().status(StatusCode::OK);
+            
+            // 设置响应头
+            for (key, value) in &api.headers {
+                response_builder = response_builder.header(key, value);
+            }
+            
+            // 如果没有设置Content-Type，默认设置为application/json
+            if !api.headers.contains_key("Content-Type") && !api.headers.contains_key("content-type") {
+                response_builder = response_builder.header(header::CONTENT_TYPE, "application/json");
+            }
+            
+            response_builder
+                .body(Body::from(api.response_body))
+                .unwrap()
+        }
+        ResponseType::File => {
+            // 文件响应
+            if let Some(file_path) = &api.file_path {
+                let full_path = state.data_dir.join(file_path);
+                
+                match fs::read(&full_path).await {
+                    Ok(file_data) => {
+                        let mut response_builder = Response::builder().status(StatusCode::OK);
+                        
+                        // 设置Content-Type
+                        let content_type = api.content_type.as_deref()
+                            .unwrap_or("application/octet-stream");
+                        response_builder = response_builder.header(header::CONTENT_TYPE, content_type);
+                        
+                        // 设置Content-Disposition，如果有文件名的话
+                        if let Some(file_name) = &api.file_name {
+                            let disposition = format!("attachment; filename=\"{}\"", file_name);
+                            response_builder = response_builder.header(header::CONTENT_DISPOSITION, disposition);
+                        }
+                        
+                        // 设置其他自定义响应头
+                        for (key, value) in &api.headers {
+                            // 避免重复设置Content-Type
+                            if key.to_lowercase() != "content-type" {
+                                response_builder = response_builder.header(key, value);
+                            }
+                        }
+                        
+                        response_builder
+                            .body(Body::from(file_data))
+                            .unwrap()
+                    }
+                    Err(e) => {
+                        error!("读取文件失败: {} - {}", full_path.display(), e);
+                        
+                        let error_msg = format!(
+                            r#"{{"error": "File not found or cannot be read: {}"}}"#,
+                            file_path
+                        );
+                        
+                        Response::builder()
+                            .status(StatusCode::NOT_FOUND)
+                            .header(header::CONTENT_TYPE, "application/json")
+                            .body(Body::from(error_msg))
+                            .unwrap()
+                    }
+                }
+            } else {
+                let error_msg = r#"{"error": "File path not configured for this API"}"#;
+                
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(error_msg))
+                    .unwrap()
+            }
+        }
+    }
+}
+
+/// 提取客户端IP地址
+fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr) -> String {
+    // 优先检查代理头
+    if let Some(forwarded_for) = headers.get("x-forwarded-for") {
+        if let Ok(forwarded_str) = forwarded_for.to_str() {
+            // X-Forwarded-For 可能包含多个IP，取第一个
+            if let Some(first_ip) = forwarded_str.split(',').next() {
+                return first_ip.trim().to_string();
+            }
+        }
     }
     
-    // 如果没有设置Content-Type，默认设置为application/json
-    if !api.headers.contains_key("Content-Type") && !api.headers.contains_key("content-type") {
-        response_builder = response_builder.header(header::CONTENT_TYPE, "application/json");
+    if let Some(real_ip) = headers.get("x-real-ip") {
+        if let Ok(real_ip_str) = real_ip.to_str() {
+            return real_ip_str.to_string();
+        }
     }
     
-    response_builder
-        .body(Body::from(api.response_body))
-        .unwrap()
+    if let Some(forwarded) = headers.get("forwarded") {
+        if let Ok(forwarded_str) = forwarded.to_str() {
+            // 解析 Forwarded 头，格式如: for=192.0.2.60;proto=http;by=203.0.113.43
+            for part in forwarded_str.split(';') {
+                if let Some(for_part) = part.trim().strip_prefix("for=") {
+                    return for_part.to_string();
+                }
+            }
+        }
+    }
+    
+    // 如果没有代理头，使用连接地址
+    addr.ip().to_string()
+}
+
+/// 提取User-Agent信息
+fn extract_user_agent(headers: &HeaderMap) -> String {
+    headers
+        .get("user-agent")
+        .and_then(|ua| ua.to_str().ok())
+        .unwrap_or("Unknown")
+        .to_string()
 }

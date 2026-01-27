@@ -1,0 +1,730 @@
+🚀 开始构建 Mock API Server v1.0.0
+📅 构建时间: 2026-01-16 17:10:31
+🔗 Git提交: 44a0273
+
+🔍 构建工具版本: rustc 1.92.0 (ded5c06cf 2025-12-08)
+🔧 Cargo版本: cargo 1.92.0 (344c4567c 2025-10-21)
+
+✅ cargo-zigbuild 已安装，将用于 macOS 交叉编译
+
+🔍 检查交叉编译工具链...
+
+📋 工具链检查结果:
+  ✅ x86_64-pc-windows-gnu: 已安装
+  ✅ x86_64-unknown-linux-gnu: 已安装
+  ✅ aarch64-unknown-linux-gnu: 已安装
+  ✅ x86_64-apple-darwin: 已安装
+  ✅ aarch64-apple-darwin: 已安装
+
+🏗️  开始多平台构建...
+
+=== x86_64 pc windows gnu ===
+🔨 构建 x86_64-pc-windows-gnu...
+  🏗️  编译中...
+   Compiling quote v1.0.43
+   Compiling generic-array v0.14.7
+   Compiling cpufeatures v0.2.17
+   Compiling unicase v2.9.0
+   Compiling cfg-if v1.0.4
+   Compiling same-file v1.0.6
+   Compiling num-traits v0.2.19
+   Compiling rustversion v1.0.22
+   Compiling zmij v1.0.13
+   Compiling walkdir v2.5.0
+   Compiling httparse v1.10.1
+   Compiling serde_json v1.0.149
+   Compiling getrandom v0.3.4
+   Compiling mime_guess v2.0.5
+   Compiling syn v2.0.114
+   Compiling anyhow v1.0.100
+   Compiling heck v0.5.0
+   Compiling thiserror v1.0.69
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling digest v0.10.7
+   Compiling serde_path_to_error v0.1.20
+   Compiling sha2 v0.10.9
+   Compiling uuid v1.19.0
+   Compiling rust-embed-utils v7.8.1
+   Compiling tracing-attributes v0.1.31
+   Compiling tokio-macros v2.6.0
+   Compiling serde_derive v1.0.228
+   Compiling async-trait v0.1.89
+   Compiling rust-embed-impl v6.8.1
+   Compiling axum-macros v0.4.2
+   Compiling clap_derive v4.5.49
+   Compiling thiserror-impl v1.0.69
+   Compiling rust-embed v6.8.1
+   Compiling tokio v1.49.0
+   Compiling tracing v0.1.44
+   Compiling axum-core v0.4.5
+   Compiling tracing-subscriber v0.3.22
+   Compiling tower v0.4.13
+   Compiling clap v4.5.54
+   Compiling serde v1.0.228
+   Compiling serde_urlencoded v0.7.1
+   Compiling chrono v0.4.42
+   Compiling hyper v1.8.1
+   Compiling tower v0.5.2
+   Compiling tokio-util v0.7.18
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+    Finished `release` profile [optimized] target(s) in 43.51s
+  ✅ 构建成功: dist/mock-api-server-windows-amd64.exe
+  📦 文件大小: 2.9M
+
+✅ 构建完成
+
+=== x86_64 unknown linux gnu ===
+🔨 构建 x86_64-unknown-linux-gnu...
+  🏗️  编译中...
+   Compiling proc-macro2 v1.0.105
+   Compiling unicode-ident v1.0.22
+   Compiling quote v1.0.43
+   Compiling typenum v1.19.0
+   Compiling version_check v0.9.5
+   Compiling parking_lot_core v0.9.12
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling httparse v1.10.1
+   Compiling generic-array v0.14.7
+   Compiling same-file v1.0.6
+   Compiling unicase v2.9.0
+   Compiling parking_lot v0.12.5
+   Compiling autocfg v1.5.0
+   Compiling rustversion v1.0.22
+   Compiling zmij v1.0.13
+   Compiling cfg-if v1.0.4
+   Compiling cpufeatures v0.2.17
+   Compiling num-traits v0.2.19
+   Compiling mime_guess v2.0.5
+   Compiling syn v2.0.114
+   Compiling walkdir v2.5.0
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.149
+   Compiling thiserror v1.0.69
+   Compiling heck v0.5.0
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling digest v0.10.7
+   Compiling anyhow v1.0.100
+   Compiling sha2 v0.10.9
+   Compiling rust-embed-utils v7.8.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling uuid v1.19.0
+   Compiling tracing-attributes v0.1.31
+   Compiling tokio-macros v2.6.0
+   Compiling serde_derive v1.0.228
+   Compiling async-trait v0.1.89
+   Compiling thiserror-impl v1.0.69
+   Compiling axum-macros v0.4.2
+   Compiling rust-embed-impl v6.8.1
+   Compiling clap_derive v4.5.49
+   Compiling rust-embed v6.8.1
+   Compiling tokio v1.49.0
+   Compiling tracing v0.1.44
+   Compiling axum-core v0.4.5
+   Compiling tower v0.4.13
+   Compiling tracing-subscriber v0.3.22
+   Compiling clap v4.5.54
+   Compiling serde_urlencoded v0.7.1
+   Compiling chrono v0.4.42
+   Compiling hyper v1.8.1
+   Compiling tower v0.5.2
+   Compiling tokio-util v0.7.18
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+    Finished `release` profile [optimized] target(s) in 50.66s
+  ✅ 构建成功: dist/mock-api-server-linux-amd64
+  📦 文件大小: 3.1M
+
+✅ 构建完成
+
+=== aarch64 unknown linux gnu ===
+🔨 构建 aarch64-unknown-linux-gnu...
+  🏗️  编译中...
+   Compiling parking_lot_core v0.9.12
+   Compiling typenum v1.19.0
+   Compiling serde_core v1.0.228
+   Compiling generic-array v0.14.7
+   Compiling tracing v0.1.44
+   Compiling serde v1.0.228
+   Compiling httparse v1.10.1
+   Compiling zmij v1.0.13
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.149
+   Compiling num-traits v0.2.19
+   Compiling mime_guess v2.0.5
+   Compiling anyhow v1.0.100
+   Compiling parking_lot v0.12.5
+   Compiling axum-core v0.4.5
+   Compiling thiserror v1.0.69
+   Compiling tracing-subscriber v0.3.22
+   Compiling tokio v1.49.0
+   Compiling tower v0.4.13
+   Compiling clap v4.5.54
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling rust-embed-utils v7.8.1
+   Compiling rust-embed v6.8.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling uuid v1.19.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling chrono v0.4.42
+   Compiling hyper v1.8.1
+   Compiling tokio-util v0.7.18
+   Compiling tower v0.5.2
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+    Finished `release` profile [optimized] target(s) in 45.20s
+  ✅ 构建成功: dist/mock-api-server-linux-arm64
+  📦 文件大小: 2.9M
+
+✅ 构建完成
+
+=== x86_64 apple darwin ===
+🔨 构建 x86_64-apple-darwin...
+  ℹ️  使用 cargo-zigbuild 进行交叉编译
+  🏗️  编译中...
+  🔧 使用 cargo-zigbuild 进行交叉编译...
+   Compiling cfg-if v1.0.4
+   Compiling pin-project-lite v0.2.16
+   Compiling itoa v1.0.17
+   Compiling bytes v1.11.0
+   Compiling libc v0.2.180
+   Compiling smallvec v1.15.1
+   Compiling futures-core v0.3.31
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.3
+   Compiling lock_api v0.4.14
+   Compiling serde_core v1.0.228
+   Compiling typenum v1.19.0
+   Compiling log v0.4.29
+   Compiling tracing-core v0.1.36
+   Compiling generic-array v0.14.7
+   Compiling pin-utils v0.1.0
+   Compiling tower-service v0.3.3
+   Compiling futures-task v0.3.31
+   Compiling tower-layer v0.3.3
+   Compiling httparse v1.10.1
+   Compiling serde v1.0.228
+   Compiling futures-util v0.3.31
+   Compiling utf8parse v0.2.2
+   Compiling percent-encoding v2.3.2
+   Compiling mime v0.3.17
+   Compiling errno v0.3.14
+   Compiling mio v1.1.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling socket2 v0.6.1
+   Compiling http v1.4.0
+   Compiling parking_lot v0.12.5
+   Compiling tracing v0.1.44
+   Compiling tokio v1.49.0
+   Compiling httpdate v1.0.3
+   Compiling anstyle-parse v0.2.7
+   Compiling zmij v1.0.13
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling futures-channel v0.3.31
+   Compiling digest v0.10.7
+   Compiling atomic-waker v1.1.2
+   Compiling http-body v1.0.1
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling sync_wrapper v1.0.2
+   Compiling http-body-util v0.1.3
+   Compiling anstyle-query v1.1.5
+   Compiling cpufeatures v0.2.17
+   Compiling anstyle v1.0.13
+   Compiling colorchoice v1.0.4
+   Compiling same-file v1.0.6
+   Compiling regex-syntax v0.8.8
+   Compiling walkdir v2.5.0
+   Compiling anstream v0.6.21
+   Compiling sha2 v0.10.9
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.149
+   Compiling num-traits v0.2.19
+   Compiling mime_guess v2.0.5
+   Compiling form_urlencoded v1.2.2
+   Compiling futures-sink v0.3.31
+   Compiling lazy_static v1.5.0
+   Compiling ryu v1.0.22
+   Compiling core-foundation-sys v0.8.7
+   Compiling unicase v2.9.0
+   Compiling memchr v2.7.6
+   Compiling strsim v0.11.1
+   Compiling clap_lex v0.7.6
+   Compiling clap_builder v4.5.54
+   Compiling serde_path_to_error v0.1.20
+   Compiling regex-automata v0.4.13
+   Compiling serde_urlencoded v0.7.1
+   Compiling iana-time-zone v0.1.64
+   Compiling anyhow v1.0.100
+   Compiling sharded-slab v0.1.7
+   Compiling thiserror v1.0.69
+   Compiling rust-embed-utils v7.8.1
+   Compiling axum-core v0.4.5
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling matchit v0.7.3
+   Compiling bitflags v2.10.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling http-range-header v0.4.2
+   Compiling chrono v0.4.42
+   Compiling uuid v1.19.0
+   Compiling rust-embed v6.8.1
+   Compiling matchers v0.2.0
+   Compiling hyper v1.8.1
+   Compiling tokio-util v0.7.18
+   Compiling tower v0.5.2
+   Compiling tracing-subscriber v0.3.22
+   Compiling tower-http v0.5.2
+   Compiling clap v4.5.54
+   Compiling tower v0.4.13
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+warning: invoking `"xcrun" "--sdk" "macosx" "--show-sdk-path"` to find MacOSX.sdk failed: No such file or directory (os error 2)
+  |
+  = note: the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
+  = help: pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+error: linking with `/home/cat/.cache/cargo-zigbuild/0.20.1/zigcc-x86_64-apple-darwin-ceb.sh` failed: exit status: 1
+  |
+  = note:  "/home/cat/.cache/cargo-zigbuild/0.20.1/zigcc-x86_64-apple-darwin-ceb.sh" "<1 object files omitted>" "<sysroot>/lib/rustlib/x86_64-apple-darwin/lib/libcompiler_builtins-*.rlib" "-framework" "CoreFoundation" "-liconv" "-lSystem" "-lc" "-lm" "-arch" "x86_64" "-mmacosx-version-min=10.12.0" "-o" "/home/cat/project/mockapi/target/x86_64-apple-darwin/release/deps/mock_api_server-b62897e479dbbdf0" "-Wl,-dead_strip" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: error: unable to find framework 'CoreFoundation'. searched paths:  none
+          
+
+warning: `mock-api-server` (bin "mock-api-server") generated 1 warning
+error: could not compile `mock-api-server` (bin "mock-api-server") due to 1 previous error; 1 warning emitted
+  ⚠️  cargo-zigbuild 失败，尝试使用 cargo build...
+   Compiling cfg-if v1.0.4
+   Compiling pin-project-lite v0.2.16
+   Compiling bytes v1.11.0
+   Compiling itoa v1.0.17
+   Compiling futures-core v0.3.31
+   Compiling libc v0.2.180
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.3
+   Compiling log v0.4.29
+   Compiling lock_api v0.4.14
+   Compiling typenum v1.19.0
+   Compiling serde_core v1.0.228
+   Compiling pin-utils v0.1.0
+   Compiling tower-service v0.3.3
+   Compiling tracing-core v0.1.36
+   Compiling futures-task v0.3.31
+   Compiling tower-layer v0.3.3
+   Compiling utf8parse v0.2.2
+   Compiling percent-encoding v2.3.2
+   Compiling futures-util v0.3.31
+   Compiling http v1.4.0
+   Compiling httpdate v1.0.3
+   Compiling parking_lot_core v0.9.12
+   Compiling errno v0.3.14
+   Compiling socket2 v0.6.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling mio v1.1.1
+   Compiling parking_lot v0.12.5
+   Compiling generic-array v0.14.7
+   Compiling tracing v0.1.44
+   Compiling tokio v1.49.0
+   Compiling http-body v1.0.1
+   Compiling mime v0.3.17
+   Compiling anstyle-parse v0.2.7
+   Compiling http-body-util v0.1.3
+   Compiling httparse v1.10.1
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling futures-channel v0.3.31
+   Compiling digest v0.10.7
+   Compiling cpufeatures v0.2.17
+   Compiling anstyle-query v1.1.5
+   Compiling atomic-waker v1.1.2
+   Compiling sync_wrapper v1.0.2
+   Compiling same-file v1.0.6
+   Compiling anstyle v1.0.13
+   Compiling regex-syntax v0.8.8
+   Compiling colorchoice v1.0.4
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling walkdir v2.5.0
+   Compiling sha2 v0.10.9
+   Compiling anstream v0.6.21
+   Compiling zmij v1.0.13
+   Compiling serde v1.0.228
+   Compiling form_urlencoded v1.2.2
+   Compiling ryu v1.0.22
+   Compiling core-foundation-sys v0.8.7
+   Compiling strsim v0.11.1
+   Compiling clap_lex v0.7.6
+   Compiling memchr v2.7.6
+   Compiling futures-sink v0.3.31
+   Compiling unicase v2.9.0
+   Compiling lazy_static v1.5.0
+   Compiling sharded-slab v0.1.7
+   Compiling mime_guess v2.0.5
+   Compiling serde_urlencoded v0.7.1
+   Compiling clap_builder v4.5.54
+   Compiling iana-time-zone v0.1.64
+   Compiling axum-core v0.4.5
+   Compiling regex-automata v0.4.13
+   Compiling serde_json v1.0.149
+   Compiling num-traits v0.2.19
+   Compiling rust-embed-utils v7.8.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling getrandom v0.3.4
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling matchit v0.7.3
+   Compiling bitflags v2.10.0
+   Compiling http-range-header v0.4.2
+   Compiling thiserror v1.0.69
+   Compiling uuid v1.19.0
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.22
+   Compiling chrono v0.4.42
+   Compiling rust-embed v6.8.1
+   Compiling anyhow v1.0.100
+   Compiling tower v0.4.13
+   Compiling clap v4.5.54
+   Compiling hyper v1.8.1
+   Compiling tokio-util v0.7.18
+   Compiling tower v0.5.2
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+warning: invoking `"xcrun" "--sdk" "macosx" "--show-sdk-path"` to find MacOSX.sdk failed: No such file or directory (os error 2)
+  |
+  = note: the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
+  = help: pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+error: linking with `cc` failed: exit status: 1
+  |
+  = note:  "cc" "<1 object files omitted>" "<sysroot>/lib/rustlib/x86_64-apple-darwin/lib/libcompiler_builtins-*.rlib" "-framework" "CoreFoundation" "-liconv" "-lSystem" "-lc" "-lm" "-arch" "x86_64" "-mmacosx-version-min=10.12.0" "-o" "/home/cat/project/mockapi/target/x86_64-apple-darwin/release/deps/mock_api_server-b62897e479dbbdf0" "-Wl,-dead_strip" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: cc: error: unrecognized command-line option '-framework'
+          cc: error: unrecognized command-line option '-arch'
+          cc: error: unrecognized command-line option '-mmacosx-version-min=10.12.0'
+          
+
+warning: `mock-api-server` (bin "mock-api-server") generated 1 warning
+error: could not compile `mock-api-server` (bin "mock-api-server") due to 1 previous error; 1 warning emitted
+  ❌ 编译失败
+❌ 构建失败
+
+=== aarch64 apple darwin ===
+🔨 构建 aarch64-apple-darwin...
+  ℹ️  使用 cargo-zigbuild 进行交叉编译
+  🏗️  编译中...
+  🔧 使用 cargo-zigbuild 进行交叉编译...
+   Compiling cfg-if v1.0.4
+   Compiling pin-project-lite v0.2.16
+   Compiling bytes v1.11.0
+   Compiling itoa v1.0.17
+   Compiling libc v0.2.180
+   Compiling futures-core v0.3.31
+   Compiling smallvec v1.15.1
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.3
+   Compiling serde_core v1.0.228
+   Compiling lock_api v0.4.14
+   Compiling typenum v1.19.0
+   Compiling log v0.4.29
+   Compiling generic-array v0.14.7
+   Compiling tracing-core v0.1.36
+   Compiling pin-utils v0.1.0
+   Compiling tower-service v0.3.3
+   Compiling tower-layer v0.3.3
+   Compiling futures-task v0.3.31
+   Compiling serde v1.0.228
+   Compiling httparse v1.10.1
+   Compiling mime v0.3.17
+   Compiling futures-util v0.3.31
+   Compiling tracing v0.1.44
+   Compiling errno v0.3.14
+   Compiling mio v1.1.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling parking_lot v0.12.5
+   Compiling socket2 v0.6.1
+   Compiling http v1.4.0
+   Compiling tokio v1.49.0
+   Compiling utf8parse v0.2.2
+   Compiling httpdate v1.0.3
+   Compiling percent-encoding v2.3.2
+   Compiling anstyle-parse v0.2.7
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling zmij v1.0.13
+   Compiling cpufeatures v0.2.17
+   Compiling digest v0.10.7
+   Compiling futures-channel v0.3.31
+   Compiling atomic-waker v1.1.2
+   Compiling http-body v1.0.1
+   Compiling http-body-util v0.1.3
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.4
+   Compiling regex-syntax v0.8.8
+   Compiling same-file v1.0.6
+   Compiling sync_wrapper v1.0.2
+   Compiling anstyle v1.0.13
+   Compiling anstyle-query v1.1.5
+   Compiling walkdir v2.5.0
+   Compiling serde_json v1.0.149
+   Compiling sha2 v0.10.9
+   Compiling getrandom v0.3.4
+   Compiling num-traits v0.2.19
+   Compiling anstream v0.6.21
+   Compiling mime_guess v2.0.5
+   Compiling form_urlencoded v1.2.2
+   Compiling ryu v1.0.22
+   Compiling unicase v2.9.0
+   Compiling core-foundation-sys v0.8.7
+   Compiling memchr v2.7.6
+   Compiling clap_lex v0.7.6
+   Compiling strsim v0.11.1
+   Compiling lazy_static v1.5.0
+   Compiling futures-sink v0.3.31
+   Compiling thiserror v1.0.69
+   Compiling iana-time-zone v0.1.64
+   Compiling serde_urlencoded v0.7.1
+   Compiling clap_builder v4.5.54
+   Compiling sharded-slab v0.1.7
+   Compiling anyhow v1.0.100
+   Compiling regex-automata v0.4.13
+   Compiling axum-core v0.4.5
+   Compiling serde_path_to_error v0.1.20
+   Compiling rust-embed-utils v7.8.1
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling http-range-header v0.4.2
+   Compiling bitflags v2.10.0
+   Compiling matchit v0.7.3
+   Compiling chrono v0.4.42
+   Compiling matchers v0.2.0
+   Compiling clap v4.5.54
+   Compiling uuid v1.19.0
+   Compiling tracing-subscriber v0.3.22
+   Compiling rust-embed v6.8.1
+   Compiling tower v0.4.13
+   Compiling hyper v1.8.1
+   Compiling tower v0.5.2
+   Compiling tokio-util v0.7.18
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+warning: invoking `"xcrun" "--sdk" "macosx" "--show-sdk-path"` to find MacOSX.sdk failed: No such file or directory (os error 2)
+  |
+  = note: the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
+  = help: pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+error: linking with `/home/cat/.cache/cargo-zigbuild/0.20.1/zigcc-aarch64-apple-darwin-adb5.sh` failed: exit status: 1
+  |
+  = note:  "/home/cat/.cache/cargo-zigbuild/0.20.1/zigcc-aarch64-apple-darwin-adb5.sh" "<1 object files omitted>" "<sysroot>/lib/rustlib/aarch64-apple-darwin/lib/libcompiler_builtins-*.rlib" "-framework" "CoreFoundation" "-liconv" "-lSystem" "-lc" "-lm" "-arch" "arm64" "-mmacosx-version-min=11.0.0" "-o" "/home/cat/project/mockapi/target/aarch64-apple-darwin/release/deps/mock_api_server-620f1f6f212fde9d" "-Wl,-dead_strip" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: error: unable to find framework 'CoreFoundation'. searched paths:  none
+          
+
+warning: `mock-api-server` (bin "mock-api-server") generated 1 warning
+error: could not compile `mock-api-server` (bin "mock-api-server") due to 1 previous error; 1 warning emitted
+  ⚠️  cargo-zigbuild 失败，尝试使用 cargo build...
+   Compiling cfg-if v1.0.4
+   Compiling pin-project-lite v0.2.16
+   Compiling itoa v1.0.17
+   Compiling bytes v1.11.0
+   Compiling futures-core v0.3.31
+   Compiling libc v0.2.180
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.3
+   Compiling lock_api v0.4.14
+   Compiling log v0.4.29
+   Compiling typenum v1.19.0
+   Compiling tracing-core v0.1.36
+   Compiling serde_core v1.0.228
+   Compiling pin-utils v0.1.0
+   Compiling tower-service v0.3.3
+   Compiling futures-task v0.3.31
+   Compiling tower-layer v0.3.3
+   Compiling mime v0.3.17
+   Compiling futures-util v0.3.31
+   Compiling httpdate v1.0.3
+   Compiling errno v0.3.14
+   Compiling parking_lot_core v0.9.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling http v1.4.0
+   Compiling socket2 v0.6.1
+   Compiling parking_lot v0.12.5
+   Compiling mio v1.1.1
+   Compiling generic-array v0.14.7
+   Compiling tracing v0.1.44
+   Compiling tokio v1.49.0
+   Compiling percent-encoding v2.3.2
+   Compiling utf8parse v0.2.2
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling anstyle-parse v0.2.7
+   Compiling cpufeatures v0.2.17
+   Compiling http-body v1.0.1
+   Compiling digest v0.10.7
+   Compiling httparse v1.10.1
+   Compiling futures-channel v0.3.31
+   Compiling http-body-util v0.1.3
+   Compiling anstyle v1.0.13
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle-query v1.1.5
+   Compiling same-file v1.0.6
+   Compiling atomic-waker v1.1.2
+   Compiling sync_wrapper v1.0.2
+   Compiling colorchoice v1.0.4
+   Compiling regex-syntax v0.8.8
+   Compiling walkdir v2.5.0
+   Compiling anstream v0.6.21
+   Compiling sha2 v0.10.9
+   Compiling zmij v1.0.13
+   Compiling form_urlencoded v1.2.2
+   Compiling clap_lex v0.7.6
+   Compiling lazy_static v1.5.0
+   Compiling ryu v1.0.22
+   Compiling memchr v2.7.6
+   Compiling strsim v0.11.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling unicase v2.9.0
+   Compiling futures-sink v0.3.31
+   Compiling serde v1.0.228
+   Compiling iana-time-zone v0.1.64
+   Compiling mime_guess v2.0.5
+   Compiling clap_builder v4.5.54
+   Compiling serde_path_to_error v0.1.20
+   Compiling serde_json v1.0.149
+   Compiling regex-automata v0.4.13
+   Compiling serde_urlencoded v0.7.1
+   Compiling sharded-slab v0.1.7
+   Compiling axum-core v0.4.5
+   Compiling num-traits v0.2.19
+   Compiling rust-embed-utils v7.8.1
+   Compiling getrandom v0.3.4
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling matchit v0.7.3
+   Compiling http-range-header v0.4.2
+   Compiling nu-ansi-term v0.50.3
+   Compiling bitflags v2.10.0
+   Compiling thiserror v1.0.69
+   Compiling uuid v1.19.0
+   Compiling rust-embed v6.8.1
+   Compiling chrono v0.4.42
+   Compiling clap v4.5.54
+   Compiling anyhow v1.0.100
+   Compiling matchers v0.2.0
+   Compiling tower v0.4.13
+   Compiling tracing-subscriber v0.3.22
+   Compiling hyper v1.8.1
+   Compiling tokio-util v0.7.18
+   Compiling tower v0.5.2
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+warning: invoking `"xcrun" "--sdk" "macosx" "--show-sdk-path"` to find MacOSX.sdk failed: No such file or directory (os error 2)
+  |
+  = note: the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
+  = help: pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+error: linking with `cc` failed: exit status: 1
+  |
+  = note:  "cc" "<1 object files omitted>" "<sysroot>/lib/rustlib/aarch64-apple-darwin/lib/libcompiler_builtins-*.rlib" "-framework" "CoreFoundation" "-liconv" "-lSystem" "-lc" "-lm" "-arch" "arm64" "-mmacosx-version-min=11.0.0" "-o" "/home/cat/project/mockapi/target/aarch64-apple-darwin/release/deps/mock_api_server-620f1f6f212fde9d" "-Wl,-dead_strip" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: cc: error: unrecognized command-line option '-framework'
+          cc: error: unrecognized command-line option '-arch'
+          cc: error: unrecognized command-line option '-mmacosx-version-min=11.0.0'
+          
+
+warning: `mock-api-server` (bin "mock-api-server") generated 1 warning
+error: could not compile `mock-api-server` (bin "mock-api-server") due to 1 previous error; 1 warning emitted
+  ❌ 编译失败
+❌ 构建失败
+
+=== 本地构建 ===
+🏠 构建本地版本...
+   Compiling parking_lot_core v0.9.12
+   Compiling serde_core v1.0.228
+   Compiling typenum v1.19.0
+   Compiling generic-array v0.14.7
+   Compiling tracing v0.1.44
+   Compiling httparse v1.10.1
+   Compiling serde v1.0.228
+   Compiling zmij v1.0.13
+   Compiling serde_json v1.0.149
+   Compiling getrandom v0.3.4
+   Compiling num-traits v0.2.19
+   Compiling mime_guess v2.0.5
+   Compiling anyhow v1.0.100
+   Compiling thiserror v1.0.69
+   Compiling parking_lot v0.12.5
+   Compiling axum-core v0.4.5
+   Compiling tracing-subscriber v0.3.22
+   Compiling tokio v1.49.0
+   Compiling tower v0.4.13
+   Compiling clap v4.5.54
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling rust-embed-utils v7.8.1
+   Compiling rust-embed v6.8.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling uuid v1.19.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling chrono v0.4.42
+   Compiling hyper v1.8.1
+   Compiling tokio-util v0.7.18
+   Compiling tower v0.5.2
+   Compiling tower-http v0.5.2
+   Compiling hyper-util v0.1.19
+   Compiling axum v0.7.9
+   Compiling mock-api-server v1.0.0 (/home/cat/project/mockapi)
+    Finished `release` profile [optimized] target(s) in 45.54s
+✅ mock-api-server 构建成功
+
+📊 构建结果摘要:
+  ✅ mock-api-server-windows-amd64: 构建成功
+  ✅ mock-api-server-linux-amd64: 构建成功
+  ✅ mock-api-server-linux-arm64: 构建成功
+  ❌ mock-api-server-darwin-amd64: 构建失败
+  ❌ mock-api-server-darwin-arm64: 构建失败
+  ✅ mock-api-server: 本地构建成功
+
+📈 构建统计:
+   ✅ 成功: 4
+   ❌ 失败: 2
+   ⏭️  跳过: 0
+
+🎉 构建完成！
+
+📁 构建产物:
+文件名                           大小
+----------------------------------------
+mock-api-server-linux-amd64       3.07M
+mock-api-server-linux-arm64       2.81M
+mock-api-server-windows-amd64.exe    2.80M
+
+🚀 本地运行:
+  ./mock-api-server
+
+📖 更多信息请查看 README.md
