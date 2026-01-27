@@ -151,17 +151,20 @@ build_target() {
     echo -e "${CYAN}=== ${target} ===${NC}"
     echo -e "${YELLOW}🔨 构建 ${target}...${NC}"
     
-    # 设置特定目标的环境变量
+    # 设置特定目标的环境变量和构建选项
     local build_cmd="cargo build --release --target=${target}"
     local binary_name="${PROJECT_NAME}"
     
-    # 为ARM64 Linux设置正确的链接器
-    if [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
+    # 为 Linux 目标添加静态链接以提高兼容性
+    if [[ "$target" == "x86_64-unknown-linux-gnu" ]]; then
+        export RUSTFLAGS="-C link-arg=-static-libgcc"
+    elif [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
         export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
         export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
         export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
         export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
         export STRIP_aarch64_unknown_linux_gnu=aarch64-linux-gnu-strip
+        export RUSTFLAGS="-C link-arg=-static-libgcc"
     fi
     
     if [[ "$target" == *"windows"* ]]; then
@@ -203,6 +206,21 @@ build_target() {
     
     echo -e "${GREEN}✅ 构建完成${NC}"
     echo ""
+    
+    # 清理目标特定的环境变量
+    if [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
+        unset CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
+        unset CC_aarch64_unknown_linux_gnu
+        unset CXX_aarch64_unknown_linux_gnu
+        unset AR_aarch64_unknown_linux_gnu
+        unset STRIP_aarch64_unknown_linux_gnu
+    fi
+    
+    # 清理 RUSTFLAGS
+    if [[ "$target" == "x86_64-unknown-linux-gnu" || "$target" == "aarch64-unknown-linux-gnu" ]]; then
+        unset RUSTFLAGS
+    fi
+    
     return 0
 }
 

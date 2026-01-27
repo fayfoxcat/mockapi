@@ -6,7 +6,6 @@ use axum::{
     response::Response,
     routing::{get, post},
     Router,
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
 };
 use clap::{Parser, Subcommand};
 use std::{
