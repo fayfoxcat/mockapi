@@ -6,6 +6,7 @@ use axum::{
     response::Response,
     routing::{get, post},
     Router,
+    extract::connect_info::IntoMakeServiceWithConnectInfo,
 };
 use clap::{Parser, Subcommand};
 use std::{
@@ -155,7 +156,7 @@ async fn run_server(port: u16, state: AppState) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     
     // 启动服务并支持优雅关闭
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
