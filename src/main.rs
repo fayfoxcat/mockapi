@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
-    process,
+    process::{self, Command},
     sync::{Arc, RwLock},
 };
 use tokio::{signal, time::{sleep, Duration}};

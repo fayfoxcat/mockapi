@@ -664,16 +664,25 @@ async function openLogs(id) {
                 const statusClass = log.statusCode === 200 ? 'log-success' : 'log-error';
                 const statusDot = log.statusCode === 200 ? 'status-success' : 'status-error';
                 
+                // 格式化请求头显示
+                const headersDisplay = Object.keys(log.headers || {}).length > 0 ? 
+                    Object.entries(log.headers).map(([key, value]) => 
+                        `<div class="header-item"><span class="header-key">${key}:</span> <span class="header-value">${value}</span></div>`
+                    ).join('') : '<div class="no-headers">无请求头</div>';
+                
                 return `
                 <div class="log-item ${statusClass}">
                     <div class="log-header">
-                        <div class="log-method-url">
+                        <div class="log-status-method">
                             <span class="status-dot ${statusDot}"></span>
-                            <strong>${log.method}</strong>
-                            <span style="color: #6c757d;">${log.url}</span>
-                            <span class="method-badge method-${log.method}" style="font-size: 9px; padding: 2px 6px;">${log.statusCode}</span>
+                            <strong class="log-method">${log.method}</strong>
+                            <span class="method-badge method-${log.method}">${log.statusCode}</span>
                         </div>
                         <span class="log-timestamp">${log.timestamp}</span>
+                    </div>
+                    <div class="log-url-section">
+                        <div class="log-url-label">🔗 请求地址:</div>
+                        <div class="log-url-value">${log.url}</div>
                     </div>
                     <div class="log-meta">
                         <div class="log-meta-item">
@@ -684,22 +693,22 @@ async function openLogs(id) {
                             <span class="log-meta-label">🖥️ 用户代理</span>
                             <span class="log-meta-value" title="${log.userAgent || 'Unknown'}">${formatUserAgent(log.userAgent)}</span>
                         </div>
-                        ${Object.keys(log.headers || {}).length > 0 ? `
-                        <div class="log-meta-item">
-                            <span class="log-meta-label">📋 请求头数量</span>
-                            <span class="log-meta-value">${Object.keys(log.headers).length} 个</span>
+                    </div>
+                    <div class="log-headers-section">
+                        <div class="log-headers-label">📋 请求头:</div>
+                        <div class="log-headers-content">
+                            ${headersDisplay}
                         </div>
-                        ` : ''}
                     </div>
                     ${log.requestBody ? `
-                    <div style="margin-top: 12px;">
-                        <div class="log-meta-label" style="margin-bottom: 6px;">📤 请求体:</div>
+                    <div class="log-request-body">
+                        <div class="log-meta-label">📤 请求体:</div>
                         <div class="log-body">${log.requestBody}</div>
                     </div>
                     ` : ''}
                     ${log.error ? `
-                    <div style="margin-top: 12px;">
-                        <div class="log-meta-label" style="margin-bottom: 6px; color: #dc3545;">❌ 错误信息:</div>
+                    <div class="log-error-section">
+                        <div class="log-meta-label log-error-label">❌ 错误信息:</div>
                         <div class="log-body log-error">${log.error}</div>
                     </div>
                     ` : ''}
