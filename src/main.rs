@@ -11,9 +11,12 @@ use clap::{Parser, Subcommand};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
-    process::{self, Command},
+    process,
     sync::{Arc, RwLock},
 };
+
+#[cfg(unix)]
+use std::process::Command;
 use tokio::{signal, time::{sleep, Duration}};
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn, error};
