@@ -14,19 +14,19 @@ name = "mockapi"
 path = "src/main.rs"
 
 [dependencies]
-# Web框架
+# Web框架 - 精简特性但保留必要的std
 axum = { version = "0.7", features = ["macros", "multipart"] }
-tokio = { version = "1.0", features = ["full"] }
-tower = "0.4"
+tokio = { version = "1.0", features = ["rt-multi-thread", "net", "fs", "signal", "time"] }
+tower = { version = "0.4" }
 tower-http = { version = "0.5", features = ["fs", "cors"] }
 
 # 序列化
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0" }
 
 # 日志
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 # 时间处理
 chrono = { version = "0.4", features = ["serde"] }
@@ -38,19 +38,26 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 clap = { version = "4.0", features = ["derive"] }
 
 # 静态文件嵌入
-rust-embed = "6.0"
-mime_guess = "2.0"
+rust-embed = { version = "6.0" }
+mime_guess = { version = "2.0" }
 
 # 错误处理
-anyhow = "1.0"
-thiserror = "1.0"
+anyhow = { version = "1.0" }
+thiserror = { version = "1.0" }
 
-# Unix系统调用
-libc = "0.2"
+# Unix系统调用 - 仅在Unix系统上编译
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2" }
 
 [profile.release]
-# 优化配置
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
+# 优化配置 - 最大化减小文件大小
+lto = "fat"              # 启用完整链接时优化
+codegen-units = 1        # 减少代码生成单元以提高优化效果
+panic = "abort"          # 使用abort而不是unwind减小大小
+strip = "symbols"        # 移除符号表和调试信息
+opt-level = "z"          # 优化大小而非速度
+
+# 减小依赖大小的配置
+[profile.release.package."*"]
+opt-level = "z"          # 对所有依赖也进行大小优化
+debug = false            # 禁用调试信息

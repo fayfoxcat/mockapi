@@ -660,29 +660,51 @@ async function openLogs(id) {
         if (logs.length === 0) {
             logList.innerHTML = '<div class="empty-state">暂无请求日志</div>';
         } else {
-            logList.innerHTML = logs.reverse().map(log => `
-                <div class="log-item">
+            logList.innerHTML = logs.reverse().map(log => {
+                const statusClass = log.statusCode === 200 ? 'log-success' : 'log-error';
+                const statusDot = log.statusCode === 200 ? 'status-success' : 'status-error';
+                
+                return `
+                <div class="log-item ${statusClass}">
                     <div class="log-header">
-                        <span>
-                            <span class="status-dot ${log.statusCode === 200 ? 'status-success' : 'status-error'}"></span>
-                            <strong>${log.method}</strong> ${log.url}
-                        </span>
-                        <span>${log.timestamp}</span>
+                        <div class="log-method-url">
+                            <span class="status-dot ${statusDot}"></span>
+                            <strong>${log.method}</strong>
+                            <span style="color: #6c757d;">${log.url}</span>
+                            <span class="method-badge method-${log.method}" style="font-size: 9px; padding: 2px 6px;">${log.statusCode}</span>
+                        </div>
+                        <span class="log-timestamp">${log.timestamp}</span>
                     </div>
                     <div class="log-meta">
                         <div class="log-meta-item">
-                            <span class="log-meta-label">客户端IP:</span>
+                            <span class="log-meta-label">🌐 客户端IP</span>
                             <span class="log-meta-value">${log.clientIp || 'Unknown'}</span>
                         </div>
                         <div class="log-meta-item">
-                            <span class="log-meta-label">浏览器:</span>
+                            <span class="log-meta-label">🖥️ 用户代理</span>
                             <span class="log-meta-value" title="${log.userAgent || 'Unknown'}">${formatUserAgent(log.userAgent)}</span>
                         </div>
+                        ${Object.keys(log.headers || {}).length > 0 ? `
+                        <div class="log-meta-item">
+                            <span class="log-meta-label">📋 请求头数量</span>
+                            <span class="log-meta-value">${Object.keys(log.headers).length} 个</span>
+                        </div>
+                        ` : ''}
                     </div>
-                    ${log.requestBody ? `<div class="log-body"><strong>请求体:</strong><br>${log.requestBody}</div>` : ''}
-                    ${log.error ? `<div class="log-body log-error"><strong>错误:</strong><br>${log.error}</div>` : ''}
+                    ${log.requestBody ? `
+                    <div style="margin-top: 12px;">
+                        <div class="log-meta-label" style="margin-bottom: 6px;">📤 请求体:</div>
+                        <div class="log-body">${log.requestBody}</div>
+                    </div>
+                    ` : ''}
+                    ${log.error ? `
+                    <div style="margin-top: 12px;">
+                        <div class="log-meta-label" style="margin-bottom: 6px; color: #dc3545;">❌ 错误信息:</div>
+                        <div class="log-body log-error">${log.error}</div>
+                    </div>
+                    ` : ''}
                 </div>
-            `).join('');
+            `}).join('');
         }
         
         document.getElementById('logsModal').classList.add('show');
