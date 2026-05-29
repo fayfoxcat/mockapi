@@ -15,7 +15,8 @@ MockAPI 是一个轻量级、高性能的API模拟服务器，专为开发和测
 - 📁 **文件响应**: 支持文件上传和文件流响应，适用于各种场景
 - 🔄 **动态路由**: 支持动态添加、修改、删除API接口，无需重启
 - 🎨 **多种响应**: 支持JSON和文件两种响应类型
-- 📊 **数据持久化**: 自动保存API配置和日志数据
+- 📊 **数据持久化**: SQLite 数据库存储，支持 JSON 迁移
+- 📋 **大内容编辑**: 支持超大 JSON 响应体编辑（50MB+）
 - 🛠️ **守护进程**: 支持后台运行、启停控制和状态监控
 - 🔧 **跨平台**: 支持 Linux、Windows、macOS 多平台部署
 
@@ -259,6 +260,7 @@ mockapi/
 ├── src/                     # 源代码
 │   ├── main.rs             # 主程序入口和服务管理
 │   ├── api.rs              # API处理逻辑和路由
+│   ├── db.rs               # SQLite 数据库操作层
 │   ├── models.rs           # 数据模型定义
 │   ├── utils.rs            # 工具函数
 │   └── embedded.rs         # 静态资源嵌入和服务
@@ -279,11 +281,11 @@ mockapi/
 
 ### 数据存储
 
-MockAPI 会在运行目录下创建 `data/` 文件夹：
+MockAPI 使用 SQLite 数据库存储所有 API 配置和请求日志。首次启动时会自动将 JSON 文件迁移至 SQLite。
 
 ```
 data/
-├── mock_apis.json         # API配置数据
+├── mockapi.db            # SQLite 数据库（API配置 + 请求日志）
 └── uploads/              # 上传的文件
     ├── uuid1.jpg         # 上传的图片文件
     ├── uuid2.pdf         # 上传的PDF文件
@@ -295,13 +297,6 @@ data/
 ```bash
 # 日志级别
 export RUST_LOG=info
-
-# 自定义数据目录
-export MOCKAPI_DATA_DIR=/path/to/data
-
-# 服务器配置
-export MOCKAPI_HOST=0.0.0.0
-export MOCKAPI_PORT=8344
 ```
 
 ## 🚀 性能特性
@@ -372,6 +367,7 @@ cargo test
 - [Tokio](https://tokio.rs/) - 异步运行时
 - [Serde](https://serde.rs/) - 序列化框架
 - [Clap](https://clap.rs/) - 命令行参数解析
+- [Rusqlite](https://github.com/rusqlite/rusqlite) - SQLite 绑定
 
 ## 📞 支持
 
@@ -390,6 +386,13 @@ cargo test
 - 📁 文件响应支持
 - 🛠️ 守护进程模式
 - 🔧 多平台支持
+
+### v1.1.0 (2025-05-29)
+- 📊 数据存储从 JSON 迁移至 SQLite（自动迁移，无感切换）
+- 📋 支持超大 JSON 响应体编辑（50MB body limit）
+- 🔧 修复复制 CURL 命令使用实际访问 IP 而非 localhost
+- 🛡️ 前端增加 XSS 防护（HTML 转义）
+- ⚡ 大内容 textarea 使用 JS 赋值，避免页面卡死
 
 ---
 

@@ -1,18 +1,19 @@
 use anyhow::Result;
 use axum::{
     body::Body,
-    extract::{ConnectInfo, State},
+    extract::{ConnectInfo, DefaultBodyLimit, State},
     http::{HeaderMap, Method, Uri},
     response::Response,
     routing::{get, post},
     Router,
 };
 use clap::{Parser, Subcommand};
+use rusqlite::Connection;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
     process,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex},
 };
 
 #[cfg(unix)]
@@ -22,6 +23,7 @@ use tower_http::cors::CorsLayer;
 use tracing::{info, warn, error};
 
 mod api;
+mod db;
 mod embedded;
 mod models;
 mod utils;
@@ -104,9 +106,8 @@ enum Commands {
 /// 应用程序状态管理
 #[derive(Clone)]
 pub struct AppState {
-    pub apis: Arc<RwLock<Vec<MockApi>>>,
+    pub db: Arc<Mutex<Connection>>,
     pub data_dir: PathBuf,
-    pub data_file: PathBuf,
 }
 
 impl AppState {
@@ -114,39 +115,28 @@ impl AppState {
     pub fn new() -> Result<Self> {
         let base_dir = get_base_dir()?;
         let data_dir = base_dir.join("data");
-        let data_file = data_dir.join("mock_apis.json");
+        let db_path = data_dir.join("mockapi.db");
+
+        // 确保数据目录存在
+        std::fs::create_dir_all(&data_dir)?;
+
+        // 打开数据库连接
+        let conn = Connection::open(&db_path)?;
+
+        // 启用外键约束
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+
+        // 初始化表结构
+        db::init_db(&conn)?;
+
+        // 迁移 JSON 数据
+        let json_path = data_dir.join("mock_apis.json");
+        db::migrate_from_json(&conn, &json_path)?;
 
         Ok(Self {
-            apis: Arc::new(RwLock::new(Vec::new())),
+            db: Arc::new(Mutex::new(conn)),
             data_dir,
-            data_file,
         })
-    }
-
-    /// 从文件加载API配置
-    pub async fn load_apis(&self) -> Result<()> {
-        let content = match tokio::fs::read_to_string(&self.data_file).await {
-            Ok(content) => content,
-            Err(_) => {
-                info!("数据文件不存在，初始化空列表");
-                return Ok(());
-            }
-        };
-
-        let apis: Vec<MockApi> = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("解析数据文件失败: {}", e))?;
-
-        *self.apis.write().unwrap() = apis;
-        info!("加载了 {} 个API配置", self.apis.read().unwrap().len());
-        Ok(())
-    }
-
-    /// 保存API配置到文件
-    pub async fn save_apis(&self) -> Result<()> {
-        let apis = self.apis.read().unwrap().clone();
-        let content = serde_json::to_string_pretty(&apis)?;
-        tokio::fs::write(&self.data_file, content).await?;
-        Ok(())
     }
 }
 
@@ -204,9 +194,6 @@ async fn main() -> Result<()> {
 
 /// 运行HTTP服务器
 async fn run_server(port: u16, host: IpAddr, state: AppState) -> Result<()> {
-    // 初始化数据目录
-    init_dirs(&state).await?;
-
     // 显示启动信息
     print_banner();
     info!("========================================");
@@ -215,18 +202,22 @@ async fn run_server(port: u16, host: IpAddr, state: AppState) -> Result<()> {
     info!("  PID:      {}", process::id());
     info!("  绑定地址: {}:{}", host, port);
     info!("  数据目录: {}", state.data_dir.display());
-    info!("  数据文件: {}", state.data_file.display());
-    info!("  访问地址: http://{}:{}", 
-          if host == IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)) { 
-              "localhost".to_string() 
-          } else { 
-              host.to_string() 
-          }, 
+    info!("  数据库:   {}/mockapi.db", state.data_dir.display());
+    info!("  访问地址: http://{}:{}",
+          if host == IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)) {
+              "localhost".to_string()
+          } else {
+              host.to_string()
+          },
           port);
     info!("========================================");
 
     // 加载API数据
-    state.load_apis().await?;
+    {
+        let conn = state.db.lock().unwrap();
+        let apis = db::load_all_apis(&conn)?;
+        info!("加载了 {} 个API配置", apis.len());
+    }
 
     // 创建路由
     let app = create_router(state);
@@ -236,7 +227,7 @@ async fn run_server(port: u16, host: IpAddr, state: AppState) -> Result<()> {
     info!("服务启动成功，等待请求...");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    
+
     // 启动服务并支持优雅关闭
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal())
@@ -278,6 +269,7 @@ fn create_router(state: AppState) -> Router {
         .route("/api/upload", post(upload_file_handler))
         // 动态路由处理Mock API请求
         .fallback(dynamic_handler)
+        .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB body limit
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

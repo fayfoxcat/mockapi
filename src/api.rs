@@ -1,17 +1,22 @@
-use crate::{models::*, AppState};
+use crate::{db, models::*, AppState};
 use axum::{
     extract::{Multipart, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json},
 };
-use std::collections::HashMap;
 use tokio::fs;
 use tracing::{error, info};
 
 /// 获取API列表
-pub async fn list_apis_handler(State(state): State<AppState>) -> Json<Vec<MockApi>> {
-    let apis = state.apis.read().unwrap().clone();
-    Json(apis)
+pub async fn list_apis_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let conn = state.db.lock().unwrap();
+    match db::load_all_apis(&conn) {
+        Ok(apis) => Json(apis).into_response(),
+        Err(e) => {
+            error!("加载API列表失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 /// 保存API配置
@@ -27,68 +32,91 @@ pub async fn save_api_handler(
 
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    let response = {
-        let mut apis = state.apis.write().unwrap();
-        
-        match req.id.as_ref() {
-            Some(id) => {
-                // 更新现有API或创建新API
-                if let Some(api) = apis.iter_mut().find(|a| &a.id == id) {
-                    update_api_fields(api, &req, &now, &url);
-                    info!("更新API: {} ({})", api.name, api.url);
-                    SaveApiResponse { success: true, api: Some(api.clone()) }
-                } else {
-                    let new_api = create_new_api(&req, url, now);
-                    info!("新增API: {} ({})", new_api.name, new_api.url);
-                    let response_api = new_api.clone();
-                    apis.insert(0, new_api);
-                    SaveApiResponse { success: true, api: Some(response_api) }
+    let conn = state.db.lock().unwrap();
+
+    let result = match req.id.as_ref() {
+        Some(id) => {
+            // 尝试查找现有 API
+            let existing = {
+                let mut stmt = conn.prepare("SELECT id FROM mock_apis WHERE id = ?1").ok();
+                stmt.as_mut()
+                    .and_then(|s| s.query_row(rusqlite::params![id], |_| Ok(())).ok())
+                    .is_some()
+            };
+
+            if existing {
+                // 更新现有 API
+                let mut api = MockApi::new(req.name.clone(), req.method.clone(), url.clone());
+                api.id = id.clone();
+                api.headers = req.headers.clone().unwrap_or_default();
+                api.response_body = req.response_body.clone().unwrap_or_default();
+                api.response_type = req.response_type.clone().unwrap_or_default();
+                api.file_name = req.file_name.clone();
+                api.file_path = req.file_path.clone();
+                api.content_type = req.content_type.clone();
+                api.created_at = now.clone();
+                api.updated_at = now.clone();
+
+                match db::upsert_api(&conn, &api) {
+                    Ok(_) => {
+                        info!("更新API: {} ({})", api.name, api.url);
+                        Ok(api)
+                    }
+                    Err(e) => Err(e),
+                }
+            } else {
+                // ID 存在但未找到，创建新 API
+                let mut api = MockApi::new(req.name.clone(), req.method.clone(), url);
+                api.id = id.clone();
+                api.headers = req.headers.clone().unwrap_or_default();
+                api.response_body = req.response_body.clone().unwrap_or_default();
+                api.response_type = req.response_type.clone().unwrap_or_default();
+                api.file_name = req.file_name.clone();
+                api.file_path = req.file_path.clone();
+                api.content_type = req.content_type.clone();
+                api.updated_at = now;
+
+                match db::insert_api_at_top(&conn, &api) {
+                    Ok(_) => {
+                        info!("新增API: {} ({})", api.name, api.url);
+                        Ok(api)
+                    }
+                    Err(e) => Err(e),
                 }
             }
-            None => {
-                // 创建新API
-                let new_api = create_new_api(&req, url, now);
-                info!("新增API: {} ({})", new_api.name, new_api.url);
-                let response_api = new_api.clone();
-                apis.insert(0, new_api);
-                SaveApiResponse { success: true, api: Some(response_api) }
+        }
+        None => {
+            // 创建新 API
+            let mut api = MockApi::new(req.name.clone(), req.method.clone(), url);
+            api.headers = req.headers.clone().unwrap_or_default();
+            api.response_body = req.response_body.clone().unwrap_or_default();
+            api.response_type = req.response_type.clone().unwrap_or_default();
+            api.file_name = req.file_name.clone();
+            api.file_path = req.file_path.clone();
+            api.content_type = req.content_type.clone();
+            api.updated_at = now;
+
+            match db::insert_api_at_top(&conn, &api) {
+                Ok(_) => {
+                    info!("新增API: {} ({})", api.name, api.url);
+                    Ok(api)
+                }
+                Err(e) => Err(e),
             }
         }
     };
-    
-    if let Err(e) = state.save_apis().await {
-        error!("保存数据文件失败: {}", e);
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+
+    match result {
+        Ok(api) => Json(SaveApiResponse {
+            success: true,
+            api: Some(api),
+        })
+        .into_response(),
+        Err(e) => {
+            error!("保存API失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
     }
-    
-    Json(response).into_response()
-}
-
-/// 更新API字段的辅助函数
-fn update_api_fields(api: &mut MockApi, req: &SaveApiRequest, now: &str, url: &str) {
-    api.name = req.name.clone();
-    api.method = req.method.clone();
-    api.url = url.to_string();
-    api.headers = req.headers.clone().unwrap_or_default();
-    api.response_body = req.response_body.clone().unwrap_or_default();
-    api.response_type = req.response_type.clone().unwrap_or_default();
-    api.file_name = req.file_name.clone();
-    api.file_path = req.file_path.clone();
-    api.content_type = req.content_type.clone();
-    api.updated_at = now.to_string();
-}
-
-/// 创建新API的辅助函数
-fn create_new_api(req: &SaveApiRequest, url: String, now: String) -> MockApi {
-    let mut new_api = MockApi::new(req.name.clone(), req.method.clone(), url);
-    new_api.headers = req.headers.clone().unwrap_or_default();
-    new_api.response_body = req.response_body.clone().unwrap_or_default();
-    new_api.response_type = req.response_type.clone().unwrap_or_default();
-    new_api.file_name = req.file_name.clone();
-    new_api.file_path = req.file_path.clone();
-    new_api.content_type = req.content_type.clone();
-    new_api.updated_at = now;
-    new_api
 }
 
 /// 删除API配置
@@ -96,29 +124,37 @@ pub async fn delete_api_handler(
     State(state): State<AppState>,
     Json(req): Json<DeleteApiRequest>,
 ) -> impl IntoResponse {
-    {
-        let mut apis = state.apis.write().unwrap();
-        
-        if let Some(pos) = apis.iter().position(|a| a.id == req.id) {
-            let removed = apis.remove(pos);
-            info!("删除API: {} ({})", removed.name, removed.url);
+    let conn = state.db.lock().unwrap();
+
+    match db::delete_api(&conn, &req.id) {
+        Ok(true) => {
+            info!("删除API: {}", req.id);
+            Json(SuccessResponse { success: true }).into_response()
+        }
+        Ok(false) => {
+            error!("未找到要删除的API: {}", req.id);
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            error!("删除API失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
-    
-    save_and_respond(&state).await
 }
 
 /// 获取API请求日志
 pub async fn get_logs_handler(
     State(state): State<AppState>,
     Query(params): Query<LogsQuery>,
-) -> Json<Vec<LogEntry>> {
-    let apis = state.apis.read().unwrap();
-    
-    if let Some(api) = apis.iter().find(|a| a.id == params.id) {
-        Json(api.logs.clone())
-    } else {
-        Json(Vec::new())
+) -> impl IntoResponse {
+    let conn = state.db.lock().unwrap();
+
+    match db::get_logs(&conn, &params.id) {
+        Ok(logs) => Json(logs).into_response(),
+        Err(e) => {
+            error!("获取日志失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
     }
 }
 
@@ -127,16 +163,18 @@ pub async fn clear_logs_handler(
     State(state): State<AppState>,
     Json(req): Json<ClearLogsRequest>,
 ) -> impl IntoResponse {
-    {
-        let mut apis = state.apis.write().unwrap();
-        
-        if let Some(api) = apis.iter_mut().find(|a| a.id == req.id) {
-            api.logs.clear();
-            info!("清空日志: {}", api.name);
+    let conn = state.db.lock().unwrap();
+
+    match db::clear_logs(&conn, &req.id) {
+        Ok(_) => {
+            info!("清空日志: {}", req.id);
+            Json(SuccessResponse { success: true }).into_response()
+        }
+        Err(e) => {
+            error!("清空日志失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
-    
-    save_and_respond(&state).await
 }
 
 /// 重新排序API列表
@@ -144,29 +182,18 @@ pub async fn reorder_apis_handler(
     State(state): State<AppState>,
     Json(req): Json<ReorderRequest>,
 ) -> impl IntoResponse {
-    {
-        let mut apis = state.apis.write().unwrap();
-        
-        // 创建ID到API的映射
-        let mut api_map: HashMap<String, MockApi> = HashMap::new();
-        for api in apis.drain(..) {
-            api_map.insert(api.id.clone(), api);
+    let conn = state.db.lock().unwrap();
+
+    match db::reorder_apis(&conn, &req.ids) {
+        Ok(_) => {
+            info!("API列表重新排序");
+            Json(SuccessResponse { success: true }).into_response()
         }
-        
-        // 按新顺序重新排列
-        for id in &req.ids {
-            if let Some(api) = api_map.remove(id) {
-                apis.push(api);
-            }
+        Err(e) => {
+            error!("重新排序失败: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-        
-        // 添加剩余的API
-        apis.extend(api_map.into_values());
-        
-        info!("API列表重新排序");
     }
-    
-    save_and_respond(&state).await
 }
 
 /// 文件上传处理器
@@ -175,7 +202,7 @@ pub async fn upload_file_handler(
     mut multipart: Multipart,
 ) -> impl IntoResponse {
     let uploads_dir = state.data_dir.join("uploads");
-    
+
     // 确保上传目录存在
     if let Err(e) = fs::create_dir_all(&uploads_dir).await {
         error!("创建上传目录失败: {}", e);
@@ -186,7 +213,7 @@ pub async fn upload_file_handler(
         let name = field.name().unwrap_or("").to_string();
         let filename = field.file_name().unwrap_or("").to_string();
         let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
-        
+
         if name == "file" && !filename.is_empty() {
             let data = match field.bytes().await {
                 Ok(data) => data,
@@ -202,15 +229,15 @@ pub async fn upload_file_handler(
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .unwrap_or("");
-            
+
             let stored_filename = if file_extension.is_empty() {
                 file_id
             } else {
                 format!("{}.{}", file_id, file_extension)
             };
-            
+
             let file_path = uploads_dir.join(&stored_filename);
-            
+
             // 保存文件
             if let Err(e) = fs::write(&file_path, &data).await {
                 error!("保存文件失败: {}", e);
@@ -232,14 +259,4 @@ pub async fn upload_file_handler(
 
     error!("未找到有效的文件字段");
     StatusCode::BAD_REQUEST.into_response()
-}
-
-/// 保存数据并返回成功响应的辅助函数
-async fn save_and_respond(state: &AppState) -> impl IntoResponse {
-    if let Err(e) = state.save_apis().await {
-        error!("保存数据文件失败: {}", e);
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-    
-    Json(SuccessResponse { success: true }).into_response()
 }

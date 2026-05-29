@@ -9,6 +9,12 @@ let selectedIds = new Set();
 let currentResponseType = 'json';
 let uploadedFileInfo = null;
 
+// HTML 转义，防止 XSS 和模板字面量注入问题
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // 分页相关
 let currentPage = 1;
 let pageSize = 10;
@@ -126,6 +132,14 @@ function renderList() {
     html += renderPagination(totalCount, totalPages);
 
     list.innerHTML = html;
+
+    // 渲染完成后，用 JS 赋值大内容到 textarea（避免模板字面量卡死）
+    for (const api of pageData) {
+        if (api.responseType !== 'file') {
+            populateTextarea(api.id, api.responseBody || '');
+        }
+    }
+
     initDragAndDrop();
     updateBatchDeleteBtn();
 }
@@ -133,22 +147,29 @@ function renderList() {
 // 渲染详情面板
 function renderDetail(api, isEditing = false) {
     const disabled = isEditing ? '' : 'disabled';
-    const responseTypeDisplay = api.responseType === 'file' ? 
-        `<span class="response-type-badge response-type-file">文件</span>` : 
+    const responseTypeDisplay = api.responseType === 'file' ?
+        `<span class="response-type-badge response-type-file">文件</span>` :
         `<span class="response-type-badge response-type-json">JSON</span>`;
-    
+
     let responseContent = '';
     if (api.responseType === 'file' && api.fileName) {
         responseContent = `文件: ${api.fileName}`;
     } else {
         responseContent = api.responseBody || '';
     }
-    
+
+    // 大内容：用 textarea 的 value 属性赋值，不注入 HTML 模板
+    const LARGE_THRESHOLD = 50 * 1024; // 50KB
+    const isLargeContent = responseContent.length > LARGE_THRESHOLD;
+
+    // 请求头也转义，防止注入
+    const headersStr = escapeHtml(JSON.stringify(api.headers || {}, null, 2));
+
     return `
         <div class="detail-grid">
             <div class="detail-group">
                 <label class="detail-label">服务名称</label>
-                <input type="text" class="detail-input editable" id="name-${api.id}" value="${api.name || ''}" ${disabled} placeholder="输入服务名称">
+                <input type="text" class="detail-input editable" id="name-${api.id}" value="${escapeHtml(api.name || '')}" ${disabled} placeholder="输入服务名称">
             </div>
             <div class="detail-group">
                 <label class="detail-label">请求方法</label>
@@ -161,11 +182,11 @@ function renderDetail(api, isEditing = false) {
             </div>
             <div class="detail-group full">
                 <label class="detail-label">请求URL</label>
-                <input type="text" class="detail-input editable" id="url-${api.id}" value="${api.url || ''}" ${disabled} placeholder="/api/example">
+                <input type="text" class="detail-input editable" id="url-${api.id}" value="${escapeHtml(api.url || '')}" ${disabled} placeholder="/api/example">
             </div>
             <div class="detail-group full">
                 <label class="detail-label">请求头 (JSON格式)</label>
-                <textarea class="detail-textarea editable" id="headers-${api.id}" ${disabled} placeholder='{"Content-Type": "application/json"}'>${JSON.stringify(api.headers || {}, null, 2)}</textarea>
+                <textarea class="detail-textarea editable" id="headers-${api.id}" ${disabled} placeholder='{"Content-Type": "application/json"}'>${headersStr}</textarea>
             </div>
             <div class="detail-group full">
                 <label class="detail-label">响应类型</label>
@@ -175,16 +196,19 @@ function renderDetail(api, isEditing = false) {
                 </select>
             </div>
             <div class="detail-group full" id="jsonSection-${api.id}" style="${api.responseType === 'file' ? 'display: none;' : ''}">
-                <label class="detail-label">响应体 (JSON格式)</label>
-                <textarea class="detail-textarea editable" id="response-${api.id}" ${disabled} placeholder='{"code": 200, "data": {}}'>${api.responseType === 'file' ? '' : responseContent}</textarea>
+                <label class="detail-label">响应体 (JSON格式)
+                    ${isLargeContent ? `<span style="color:#ff9800;font-size:11px;margin-left:8px;">⚠️ 内容较大 (${(responseContent.length / 1024).toFixed(0)}KB)，建议在弹窗编辑器中编辑</span>` : ''}
+                </label>
+                <textarea class="detail-textarea editable" id="response-${api.id}" ${disabled} placeholder='{"code": 200, "data": {}}'></textarea>
+                ${isEditing && isLargeContent ? `<button type="button" class="btn btn-secondary btn-small" style="margin-top:4px;" onclick="openResponse('${api.id}')">📝 在弹窗编辑器中打开</button>` : ''}
             </div>
             <div class="detail-group full" id="fileSection-${api.id}" style="${api.responseType === 'file' ? '' : 'display: none;'}">
                 <label class="detail-label">文件信息</label>
                 <div class="file-preview" id="filePreview-${api.id}">
-                    ${api.responseType === 'file' && api.fileName ? 
+                    ${api.responseType === 'file' && api.fileName ?
                         `<div style="color: #4CAF50; font-size: 12px; margin-bottom: 4px;">📁 当前文件:</div>
-                         <div style="font-weight: 500;">${api.fileName}</div>
-                         <div style="color: #666; font-size: 11px;">${api.contentType || 'unknown'}</div>` : 
+                         <div style="font-weight: 500;">${escapeHtml(api.fileName)}</div>
+                         <div style="color: #666; font-size: 11px;">${escapeHtml(api.contentType || 'unknown')}</div>` :
                         '未选择文件'}
                 </div>
                 ${isEditing ? `
@@ -198,6 +222,12 @@ function renderDetail(api, isEditing = false) {
             </div>
         </div>
     `;
+}
+
+// 渲染完成后，用 JS 赋值大内容到 textarea（避免模板字面量卡死）
+function populateTextarea(id, content) {
+    const el = document.getElementById(`response-${id}`);
+    if (el) el.value = content || '';
 }
 
 // 渲染分页
@@ -778,7 +808,7 @@ function copyCurl(id) {
     let curlCmd = `curl -X ${api.method}`;
     
     // 添加URL
-    curlCmd += ` "http://localhost:${window.location.port || '8344'}${api.url}"`;
+    curlCmd += ` "http://${window.location.hostname}:${window.location.port || '8344'}${api.url}"`;
     
     // 添加请求头
     if (api.headers && Object.keys(api.headers).length > 0) {
@@ -928,6 +958,9 @@ function toggleDetailResponseType(id, type) {
             const detailElement = document.getElementById(`detail-${id}`);
             if (detailElement) {
                 detailElement.innerHTML = renderDetail(api, true);
+                if (api.responseType !== 'file') {
+                    populateTextarea(api.id, api.responseBody || '');
+                }
             }
         }
     }

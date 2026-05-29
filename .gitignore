@@ -8,8 +8,14 @@ dist/
 build/
 target/
 
+# 运行时目录
+run/
+
 # 数据文件
 data/mock_apis.json
+data/mockapi.db
+data/mockapi.db-shm
+data/mockapi.db-wal
 
 # 日志文件
 logs/

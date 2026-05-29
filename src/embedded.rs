@@ -1,4 +1,4 @@
-use crate::{models::*, AppState};
+use crate::{db, models::*, AppState};
 use axum::{
     body::Body,
     extract::{ConnectInfo, Path, State},
@@ -41,7 +41,7 @@ pub async fn dynamic_handler(
     body: String,
 ) -> Response<Body> {
     let path = uri.path();
-    
+
     // 根路径返回主页
     if path == "/" {
         if let Some(content) = StaticAssets::get("index.html") {
@@ -57,13 +57,13 @@ pub async fn dynamic_handler(
                 .unwrap();
         }
     }
-    
-    // 查找匹配的API
+
+    // 从数据库查找匹配的API
     let matched_api = {
-        let apis = state.apis.read().unwrap();
-        apis.iter().find(|api| api.url == path).cloned()
+        let conn = state.db.lock().unwrap();
+        db::get_api_by_url(&conn, path).ok().flatten()
     };
-    
+
     if let Some(api) = matched_api {
         handle_mock_request(state, addr, method, uri, headers, body, api).await
     } else {
@@ -85,28 +85,29 @@ async fn handle_mock_request(
     api: MockApi,
 ) -> Response<Body> {
     info!("Mock请求: {} {} from {}", method, uri.path(), addr.ip());
-    
+
     // 提取客户端信息
     let client_ip = extract_client_ip(&headers, addr);
     let user_agent = extract_user_agent(&headers);
-    
+
+    // 提取请求头
+    let mut request_headers = HashMap::new();
+    for (key, value) in headers.iter() {
+        if let Ok(value_str) = value.to_str() {
+            request_headers.insert(key.to_string(), value_str.to_string());
+        }
+    }
+
     // 检查HTTP方法是否匹配
     if method.as_str() != api.method {
         warn!("方法不匹配: 期望 {}, 实际 {}", api.method, method);
-        
+
         let error_msg = format!(
             r#"{{"error": "Method not allowed. Expected {}, got {}"}}"#,
             api.method, method
         );
-        
+
         // 记录错误日志
-        let mut request_headers = HashMap::new();
-        for (key, value) in headers.iter() {
-            if let Ok(value_str) = value.to_str() {
-                request_headers.insert(key.to_string(), value_str.to_string());
-            }
-        }
-        
         let log_entry = LogEntry::new(
             method.to_string(),
             uri.to_string(),
@@ -117,31 +118,21 @@ async fn handle_mock_request(
             user_agent,
             Some(format!("Method not allowed. Expected {}, got {}", api.method, method)),
         );
-        
-        // 更新日志
+
+        // 写入数据库
         {
-            let mut apis = state.apis.write().unwrap();
-            if let Some(api_mut) = apis.iter_mut().find(|a| a.id == api.id) {
-                api_mut.add_log(log_entry);
-            }
+            let conn = state.db.lock().unwrap();
+            let _ = db::add_log(&conn, &api.id, &log_entry);
         }
-        let _ = state.save_apis().await;
-        
+
         return Response::builder()
             .status(StatusCode::METHOD_NOT_ALLOWED)
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(error_msg))
             .unwrap();
     }
-    
+
     // 记录成功日志
-    let mut request_headers = HashMap::new();
-    for (key, value) in headers.iter() {
-        if let Ok(value_str) = value.to_str() {
-            request_headers.insert(key.to_string(), value_str.to_string());
-        }
-    }
-    
     let log_entry = LogEntry::new(
         method.to_string(),
         uri.to_string(),
@@ -152,32 +143,29 @@ async fn handle_mock_request(
         user_agent,
         None,
     );
-    
-    // 更新日志
+
+    // 写入数据库
     {
-        let mut apis = state.apis.write().unwrap();
-        if let Some(api_mut) = apis.iter_mut().find(|a| a.id == api.id) {
-            api_mut.add_log(log_entry);
-        }
+        let conn = state.db.lock().unwrap();
+        let _ = db::add_log(&conn, &api.id, &log_entry);
     }
-    let _ = state.save_apis().await;
-    
+
     // 根据响应类型构建响应
     match api.response_type {
         ResponseType::Json => {
             // JSON响应
             let mut response_builder = Response::builder().status(StatusCode::OK);
-            
+
             // 设置响应头
             for (key, value) in &api.headers {
                 response_builder = response_builder.header(key, value);
             }
-            
+
             // 如果没有设置Content-Type，默认设置为application/json
             if !api.headers.contains_key("Content-Type") && !api.headers.contains_key("content-type") {
                 response_builder = response_builder.header(header::CONTENT_TYPE, "application/json");
             }
-            
+
             response_builder
                 .body(Body::from(api.response_body))
                 .unwrap()
@@ -186,22 +174,22 @@ async fn handle_mock_request(
             // 文件响应
             if let Some(file_path) = &api.file_path {
                 let full_path = state.data_dir.join(file_path);
-                
+
                 match fs::read(&full_path).await {
                     Ok(file_data) => {
                         let mut response_builder = Response::builder().status(StatusCode::OK);
-                        
+
                         // 设置Content-Type
                         let content_type = api.content_type.as_deref()
                             .unwrap_or("application/octet-stream");
                         response_builder = response_builder.header(header::CONTENT_TYPE, content_type);
-                        
+
                         // 设置Content-Disposition，如果有文件名的话
                         if let Some(file_name) = &api.file_name {
                             let disposition = format!("attachment; filename=\"{}\"", file_name);
                             response_builder = response_builder.header(header::CONTENT_DISPOSITION, disposition);
                         }
-                        
+
                         // 设置其他自定义响应头
                         for (key, value) in &api.headers {
                             // 避免重复设置Content-Type
@@ -209,19 +197,19 @@ async fn handle_mock_request(
                                 response_builder = response_builder.header(key, value);
                             }
                         }
-                        
+
                         response_builder
                             .body(Body::from(file_data))
                             .unwrap()
                     }
                     Err(e) => {
                         error!("读取文件失败: {} - {}", full_path.display(), e);
-                        
+
                         let error_msg = format!(
                             r#"{{"error": "File not found or cannot be read: {}"}}"#,
                             file_path
                         );
-                        
+
                         Response::builder()
                             .status(StatusCode::NOT_FOUND)
                             .header(header::CONTENT_TYPE, "application/json")
@@ -231,7 +219,7 @@ async fn handle_mock_request(
                 }
             } else {
                 let error_msg = r#"{"error": "File path not configured for this API"}"#;
-                
+
                 Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, "application/json")
