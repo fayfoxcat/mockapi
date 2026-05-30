@@ -469,25 +469,17 @@ async function batchDelete() {
 // 编辑相关函数
 function enableEdit(id) {
     editingIds.add(id);
-    const inputs = [
-        document.getElementById(`name-${id}`),
-        document.getElementById(`method-${id}`),
-        document.getElementById(`url-${id}`),
-        document.getElementById(`headers-${id}`),
-        document.getElementById(`response-${id}`),
-        document.getElementById(`responseType-${id}`)
-    ];
-    inputs.forEach(input => { if(input) input.disabled = false; });
-    
-    // 如果当前是文件响应类型，需要重新渲染详情面板以显示文件上传控件
+
+    // 重新渲染详情面板（编辑模式下会显示规则区域、文件上传控件等）
     const api = apis.find(a => a.id === id);
-    if (api && api.responseType === 'file') {
+    if (api) {
         const detailElement = document.getElementById(`detail-${id}`);
         if (detailElement) {
             detailElement.innerHTML = renderDetail(api, true);
+            populateTextarea(id, api.responseBody || '');
         }
     }
-    
+
     const btn = document.querySelector(`.api-item[data-id="${id}"] .btn-edit, .api-item[data-id="${id}"] .btn-save`);
     if (btn) {
         btn.textContent = '保存';
