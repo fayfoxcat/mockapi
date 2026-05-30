@@ -621,6 +621,28 @@ select.detail-input {
     background-color: #f5f5f5;
     color: #666;
 }
+/* 响应规则表格样式 */
+.rules-section { margin-top: 4px; }
+.rules-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.rules-header .detail-label { margin: 0; }
+.rules-table { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+.rules-table-head { display: grid; grid-template-columns: 36px 1fr 1.5fr 80px; gap: 8px; padding: 6px 10px; background: #f5f5f5; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #e0e0e0; }
+.rule-row { border-bottom: 1px solid #f0f0f0; }
+.rule-row:last-child { border-bottom: none; }
+.rule-row-summary { display: grid; grid-template-columns: 36px 1fr 1.5fr 80px; gap: 8px; padding: 6px 10px; align-items: center; font-size: 12px; cursor: default; }
+.rule-row-summary .rule-idx { color: #999; text-align: center; font-size: 11px; }
+.rule-row-summary .rule-name-input { padding: 3px 6px; border: 1px solid transparent; border-radius: 3px; font-size: 12px; background: transparent; width: 100%; }
+.rule-row-summary .rule-name-input:focus { border-color: #667eea; outline: none; background: #fff; }
+.rule-row-summary .rule-name-input:disabled { color: #333; }
+.rule-row-summary .rule-match-preview { color: #666; font-family: 'Monaco','Consolas',monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.rule-row-actions .btn-icon { width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; border-radius: 4px; font-size: 12px; display: flex; align-items: center; justify-content: center; color: #888; }
+.rule-row-actions .btn-icon:hover { background: #f0f0f0; color: #333; }
+.rule-row-actions .btn-icon.delete:hover { background: #ffeaea; color: #e53935; }
+.rule-expanded { padding: 8px 10px 10px 52px; background: #fafafa; border-top: 1px solid #f0f0f0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rule-expanded textarea { width: 100%; min-height: 60px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Monaco','Consolas',monospace; font-size: 11px; resize: vertical; box-sizing: border-box; }
+.rule-expanded textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.15); }
+.rule-expanded .rule-field-label { font-size: 10px; color: #999; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
 /* 日志元信息样式 - 优化版 */
 .log-meta {
     display: grid;

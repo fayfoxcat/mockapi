@@ -8,6 +8,7 @@ let editingIds = new Set();
 let selectedIds = new Set();
 let currentResponseType = 'json';
 let uploadedFileInfo = null;
+let expandedRules = new Set(); // 跟踪展开的规则行 "apiId:idx"
 
 // HTML 转义，防止 XSS 和模板字面量注入问题
 function escapeHtml(str) {
@@ -192,24 +193,6 @@ function renderDetail(api, isEditing = false) {
                 <textarea class="detail-textarea editable" id="headers-${api.id}" ${disabled} placeholder='{"Content-Type": "application/json"}'>${headersStr}</textarea>
             </div>
             <div class="detail-group full">
-                <label class="detail-label">响应规则 <span style="color:#999;font-weight:normal;font-size:11px;">（按顺序匹配请求头，首条命中返回；无匹配返回默认响应体）</span></label>
-                <div id="rules-${api.id}" class="response-rules">
-                    ${rules.map((rule, idx) => `
-                    <div class="rule-item" data-idx="${idx}">
-                        <div class="rule-header">
-                            <input type="text" class="detail-input rule-name" value="${escapeHtml(rule.name || '规则 ' + (idx + 1))}" placeholder="规则名称" ${disabled}>
-                            ${isEditing ? `<button type="button" class="btn btn-delete btn-small" onclick="removeRule('${api.id}', ${idx})">删除</button>` : ''}
-                        </div>
-                        <div class="rule-body">
-                            <textarea class="detail-textarea rule-match" placeholder='{"X-Role": "admin"}' ${disabled}>${escapeHtml(JSON.stringify(rule.matchHeaders || {}, null, 2))}</textarea>
-                            <textarea class="detail-textarea rule-response" placeholder='{"role": "admin"}' ${disabled}>${escapeHtml(rule.responseBody || '')}</textarea>
-                        </div>
-                    </div>
-                    `).join('')}
-                </div>
-                ${isEditing ? `<button type="button" class="btn btn-secondary btn-small" style="margin-top:6px;" onclick="addRule('${api.id}')">＋ 添加规则</button>` : ''}
-            </div>
-            <div class="detail-group full">
                 <label class="detail-label">响应类型</label>
                 <select class="detail-input editable" id="responseType-${api.id}" ${disabled} onchange="toggleDetailResponseType('${api.id}', this.value)">
                     <option value="json" ${api.responseType === 'json' || !api.responseType ? 'selected' : ''}>JSON响应</option>
@@ -223,6 +206,49 @@ function renderDetail(api, isEditing = false) {
                 <textarea class="detail-textarea editable" id="response-${api.id}" ${disabled} placeholder='{"code": 200, "data": {}}'></textarea>
                 ${isEditing && isLargeContent ? `<button type="button" class="btn btn-secondary btn-small" style="margin-top:4px;" onclick="openResponse('${api.id}')">📝 在弹窗编辑器中打开</button>` : ''}
             </div>
+            ${isEditing ? `
+            <div class="detail-group full rules-section" id="rulesSection-${api.id}" style="${api.responseType === 'file' ? 'display: none;' : ''}">
+                <div class="rules-header">
+                    <label class="detail-label">响应规则 <span style="color:#999;font-weight:normal;font-size:11px;">（按请求头匹配，首条命中返回；无匹配返回默认响应体）</span></label>
+                    <button type="button" class="btn btn-secondary btn-small" onclick="addRule('${api.id}')">＋ 添加规则</button>
+                </div>
+                <div id="rules-${api.id}" class="response-rules">
+                    ${rules.length > 0 ? `
+                    <div class="rules-table">
+                        <div class="rules-table-head">
+                            <span>#</span><span>规则名称</span><span>匹配请求头</span><span style="text-align:right">操作</span>
+                        </div>
+                        ${rules.map((rule, idx) => {
+                            const key = `${api.id}:${idx}`;
+                            const isRuleExpanded = expandedRules.has(key);
+                            const matchPreview = Object.entries(rule.matchHeaders || {}).map(([k,v]) => `${k}=${v}`).join(', ') || '空';
+                            return `
+                            <div class="rule-row" data-idx="${idx}">
+                                <div class="rule-row-summary">
+                                    <span class="rule-idx">${idx + 1}</span>
+                                    <input type="text" class="rule-name-input" value="${escapeHtml(rule.name || '规则 ' + (idx + 1))}" placeholder="规则名称">
+                                    <span class="rule-match-preview" title="${escapeHtml(matchPreview)}">${escapeHtml(matchPreview)}</span>
+                                    <div class="rule-row-actions">
+                                        <button type="button" class="btn-icon" onclick="toggleRuleExpand('${api.id}', ${idx})" title="${isRuleExpanded ? '折叠' : '展开'}">${isRuleExpanded ? '▲' : '▼'}</button>
+                                        <button type="button" class="btn-icon delete" onclick="removeRule('${api.id}', ${idx})" title="删除">✕</button>
+                                    </div>
+                                </div>
+                                ${isRuleExpanded ? `
+                                <div class="rule-expanded">
+                                    <div>
+                                        <div class="rule-field-label">匹配请求头 (JSON)</div>
+                                        <textarea class="rule-match" placeholder='{"X-Role": "admin"}'>${escapeHtml(JSON.stringify(rule.matchHeaders || {}, null, 2))}</textarea>
+                                    </div>
+                                    <div>
+                                        <div class="rule-field-label">响应体</div>
+                                        <textarea class="rule-response" placeholder='{"role": "admin"}'>${escapeHtml(rule.responseBody || '')}</textarea>
+                                    </div>
+                                </div>` : ''}
+                            </div>`;
+                        }).join('')}
+                    </div>` : ''}
+                </div>
+            </div>` : ''}
             <div class="detail-group full" id="fileSection-${api.id}" style="${api.responseType === 'file' ? '' : 'display: none;'}">
                 <label class="detail-label">文件信息</label>
                 <div class="file-preview" id="filePreview-${api.id}">
@@ -257,18 +283,30 @@ function addRule(apiId) {
     if (!api) return;
     if (!api.responseRules) api.responseRules = [];
     api.responseRules.push({ name: `规则 ${api.responseRules.length + 1}`, matchHeaders: {}, responseBody: '' });
-    const detailEl = document.getElementById(`detail-${apiId}`);
-    if (detailEl) {
-        const isEditing = editingIds.has(apiId);
-        detailEl.innerHTML = renderDetail(api, isEditing);
-        populateTextarea(apiId, api.responseBody || '');
-    }
+    refreshRulesUI(apiId);
 }
 
 function removeRule(apiId, idx) {
     const api = apis.find(a => a.id === apiId);
     if (!api || !api.responseRules) return;
     api.responseRules.splice(idx, 1);
+    expandedRules.delete(`${apiId}:${idx}`);
+    refreshRulesUI(apiId);
+}
+
+function toggleRuleExpand(apiId, idx) {
+    const key = `${apiId}:${idx}`;
+    if (expandedRules.has(key)) {
+        expandedRules.delete(key);
+    } else {
+        expandedRules.add(key);
+    }
+    refreshRulesUI(apiId);
+}
+
+function refreshRulesUI(apiId) {
+    const api = apis.find(a => a.id === apiId);
+    if (!api) return;
     const detailEl = document.getElementById(`detail-${apiId}`);
     if (detailEl) {
         const isEditing = editingIds.has(apiId);
@@ -277,23 +315,37 @@ function removeRule(apiId, idx) {
     }
 }
 
-// 从编辑表单收集响应规则
+// 从编辑表单收集响应规则，返回 { rules, error }
 function collectRules(apiId) {
     const container = document.getElementById(`rules-${apiId}`);
-    if (!container) return null;
-    const items = container.querySelectorAll('.rule-item');
+    if (!container) return { rules: null, error: null };
+    const items = container.querySelectorAll('.rule-row');
     const rules = [];
-    items.forEach((item, idx) => {
-        const name = item.querySelector('.rule-name')?.value?.trim() || '';
-        const matchStr = item.querySelector('.rule-match')?.value?.trim() || '{}';
-        const responseBody = item.querySelector('.rule-response')?.value || '';
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const name = item.querySelector('.rule-name-input')?.value?.trim() || '';
+        // 优先从展开的 textarea 读取，否则从 summary 的 data 属性读取
+        const matchEl = item.querySelector('.rule-match');
+        const matchStr = matchEl ? matchEl.value.trim() : '{}';
+        const respEl = item.querySelector('.rule-response');
+        const responseBody = respEl ? respEl.value : '';
         let matchHeaders = {};
-        try { matchHeaders = JSON.parse(matchStr); } catch (e) {}
-        if (Object.keys(matchHeaders).length > 0 || responseBody) {
-            rules.push({ name: name || `规则 ${idx + 1}`, matchHeaders, responseBody });
+        try { matchHeaders = JSON.parse(matchStr); } catch (e) {
+            return { rules: null, error: `规则 "${name || i+1}" 的匹配请求头 JSON 格式错误` };
         }
-    });
-    return rules.length > 0 ? rules : null;
+        if (Object.keys(matchHeaders).length > 0 || responseBody) {
+            rules.push({ name: name || `规则 ${i + 1}`, matchHeaders, responseBody });
+        }
+    }
+    // 重复校验：检查 matchHeaders 是否完全相同
+    for (let i = 0; i < rules.length; i++) {
+        for (let j = i + 1; j < rules.length; j++) {
+            if (JSON.stringify(rules[i].matchHeaders) === JSON.stringify(rules[j].matchHeaders)) {
+                return { rules: null, error: `规则 "${rules[i].name}" 和 "${rules[j].name}" 匹配请求头完全相同` };
+            }
+        }
+    }
+    return { rules: rules.length > 0 ? rules : null, error: null };
 }
 
 // 渲染分页
@@ -481,7 +533,12 @@ async function saveAPI(id) {
     }
 
     // 响应规则（可选）
-    api.responseRules = collectRules(id);
+    const { rules: responseRules, error: rulesError } = collectRules(id);
+    if (rulesError) {
+        showToast(rulesError, 'error');
+        return;
+    }
+    api.responseRules = responseRules;
     
     // 获取响应类型
     const responseTypeSelect = document.getElementById(`responseType-${id}`);
@@ -1008,13 +1065,16 @@ function getResponsePreview(api) {
 function toggleDetailResponseType(id, type) {
     const jsonSection = document.getElementById(`jsonSection-${id}`);
     const fileSection = document.getElementById(`fileSection-${id}`);
-    
+    const rulesSection = document.getElementById(`rulesSection-${id}`);
+
     if (type === 'file') {
         if (jsonSection) jsonSection.style.display = 'none';
         if (fileSection) fileSection.style.display = 'block';
+        if (rulesSection) rulesSection.style.display = 'none';
     } else {
         if (jsonSection) jsonSection.style.display = 'block';
         if (fileSection) fileSection.style.display = 'none';
+        if (rulesSection) rulesSection.style.display = 'block';
     }
     
     // 如果是编辑模式，需要重新渲染以显示正确的控件

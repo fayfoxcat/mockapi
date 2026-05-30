@@ -10,7 +10,7 @@ use axum::{
 use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     path::PathBuf,
     process,
     sync::{Arc, Mutex},
@@ -204,8 +204,10 @@ async fn run_server(port: u16, host: IpAddr, state: AppState) -> Result<()> {
     info!("  数据目录: {}", state.data_dir.display());
     info!("  数据库:   {}/mockapi.db", state.data_dir.display());
     info!("  访问地址: http://{}:{}",
-          if host == IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)) {
+          if host == IpAddr::V4(Ipv4Addr::UNSPECIFIED) {
               "localhost".to_string()
+          } else if host == IpAddr::V6(Ipv6Addr::UNSPECIFIED) {
+              "[::1]".to_string()
           } else {
               host.to_string()
           },
@@ -222,16 +224,57 @@ async fn run_server(port: u16, host: IpAddr, state: AppState) -> Result<()> {
     // 创建路由
     let app = create_router(state);
 
-    // 启动服务器
-    let addr = SocketAddr::new(host, port);
+    // 启动服务器（支持 IPv4 + IPv6 双栈）
     info!("服务启动成功，等待请求...");
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    if host == IpAddr::V4(Ipv4Addr::UNSPECIFIED) {
+        // 双栈模式：同时监听 IPv4 和 IPv6
+        let v4_addr = SocketAddr::new(host, port);
+        let v6_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port);
 
-    // 启动服务并支持优雅关闭
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+        let listener_v4 = tokio::net::TcpListener::bind(v4_addr).await;
+        let listener_v6 = tokio::net::TcpListener::bind(v6_addr).await;
+
+        // IPv6 socket 需要设置 IPV6_V6ONLY 避免和 IPv4 冲突
+        let listener_v6 = match listener_v6 {
+            Ok(l) => Ok(l),
+            Err(_) => {
+                // 使用 libc 设置 IPV6_V6ONLY 后创建 tokio listener
+                create_ipv6_listener(port)
+            }
+        };
+
+        match (listener_v4, listener_v6) {
+            (Ok(v4), Ok(v6)) => {
+                info!("双栈模式: IPv4 (0.0.0.0:{}) + IPv6 ([::]:{})", port, port);
+                let app_v4 = app.clone();
+                let shutdown_v4 = shutdown_signal();
+                let shutdown_v6 = shutdown_signal();
+                tokio::select! {
+                    r = axum::serve(v4, app_v4.into_make_service_with_connect_info::<SocketAddr>())
+                        .with_graceful_shutdown(shutdown_v4) => r?,
+                    r = axum::serve(v6, app.into_make_service_with_connect_info::<SocketAddr>())
+                        .with_graceful_shutdown(shutdown_v6) => r?,
+                }
+            }
+            (Ok(v4), Err(e)) => {
+                warn!("IPv6 绑定失败 ({}), 仅使用 IPv4", e);
+                axum::serve(v4, app.into_make_service_with_connect_info::<SocketAddr>())
+                    .with_graceful_shutdown(shutdown_signal())
+                    .await?;
+            }
+            (Err(e), _) => {
+                return Err(anyhow::anyhow!("服务器绑定失败: {}", e));
+            }
+        }
+    } else {
+        // 单栈模式
+        let addr = SocketAddr::new(host, port);
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+            .with_graceful_shutdown(shutdown_signal())
+            .await?;
+    }
 
     Ok(())
 }
@@ -272,6 +315,53 @@ fn create_router(state: AppState) -> Router {
         .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB body limit
         .layer(CorsLayer::permissive())
         .with_state(state)
+}
+
+/// 创建 IPv6 listener（设置 IPV6_V6ONLY 避免与 IPv4 冲突）
+#[cfg(unix)]
+fn create_ipv6_listener(port: u16) -> Result<tokio::net::TcpListener> {
+    use std::os::unix::io::FromRawFd;
+    unsafe {
+        let sock = libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0);
+        if sock < 0 {
+            return Err(anyhow::anyhow!("创建 IPv6 socket 失败"));
+        }
+        let one: libc::c_int = 1;
+        libc::setsockopt(
+            sock,
+            libc::IPPROTO_IPV6,
+            libc::IPV6_V6ONLY,
+            &one as *const libc::c_int as *const libc::c_void,
+            std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+        );
+        libc::fcntl(sock, libc::F_SETFL, libc::O_NONBLOCK);
+
+        let addr6 = libc::sockaddr_in6 {
+            sin6_family: libc::AF_INET6 as u16,
+            sin6_port: port.to_be(),
+            sin6_flowinfo: 0,
+            sin6_addr: libc::in6addr_any,
+            sin6_scope_id: 0,
+        };
+        let ret = libc::bind(
+            sock,
+            &addr6 as *const libc::sockaddr_in6 as *const libc::sockaddr,
+            std::mem::size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+        );
+        if ret < 0 {
+            libc::close(sock);
+            return Err(anyhow::anyhow!("IPv6 bind 失败"));
+        }
+        libc::listen(sock, 128);
+        let std_listener = std::net::TcpListener::from_raw_fd(sock);
+        std_listener.set_nonblocking(true)?;
+        Ok(tokio::net::TcpListener::from_std(std_listener)?)
+    }
+}
+
+#[cfg(not(unix))]
+fn create_ipv6_listener(_port: u16) -> Result<tokio::net::TcpListener> {
+    Err(anyhow::anyhow!("IPv6 双栈仅支持 Unix 系统"))
 }
 
 /// 动态路由处理器，处理所有Mock API请求
