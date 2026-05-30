@@ -58,21 +58,21 @@ pub async fn dynamic_handler(
         }
     }
 
-    // 从数据库查找匹配的API（支持请求头条件路由）
+    // 从数据库查找匹配的API
     let matched_api = {
         let conn = state.db.lock().unwrap();
-        // 构建请求头 map（key 统一小写）
+        db::get_api_by_url(&conn, path).ok().flatten()
+    };
+
+    if let Some(api) = matched_api {
+        // 构建请求头 map（key 统一小写），用于 response_rules 匹配
         let mut req_headers = HashMap::new();
         for (key, value) in headers.iter() {
             if let Ok(v) = value.to_str() {
                 req_headers.insert(key.to_string().to_lowercase(), v.to_string());
             }
         }
-        db::match_api_by_headers(&conn, path, &req_headers).ok().flatten()
-    };
-
-    if let Some(api) = matched_api {
-        handle_mock_request(state, addr, method, uri, headers, body, api).await
+        handle_mock_request(state, addr, method, uri, headers, body, api, &req_headers).await
     } else {
         Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -90,6 +90,7 @@ async fn handle_mock_request(
     headers: HeaderMap,
     body: String,
     api: MockApi,
+    req_headers: &HashMap<String, String>,
 ) -> Response<Body> {
     info!("Mock请求: {} {} from {}", method, uri.path(), addr.ip());
 
@@ -173,8 +174,12 @@ async fn handle_mock_request(
                 response_builder = response_builder.header(header::CONTENT_TYPE, "application/json");
             }
 
+            // 根据 response_rules 匹配，无匹配使用默认 response_body
+            let response_body = db::match_rule_body(&api, req_headers)
+                .unwrap_or_else(|| api.response_body.clone());
+
             response_builder
-                .body(Body::from(api.response_body))
+                .body(Body::from(response_body))
                 .unwrap()
         }
         ResponseType::File => {

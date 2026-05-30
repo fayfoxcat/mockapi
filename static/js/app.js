@@ -113,7 +113,7 @@ function renderList() {
                 <button class="expand-btn ${isExpanded ? 'expanded' : ''}" id="expand-${api.id}" onclick="toggleDetail('${api.id}')">▶</button>
                 <div class="api-name clickable-area" title="${api.name || ''}" onclick="toggleDetail('${api.id}')">${api.name || '未命名'}</div>
                 <span class="method-badge method-${api.method} clickable-area" onclick="toggleDetail('${api.id}')">${api.method}</span>
-                <div class="api-url clickable-area" title="${api.url || ''}" onclick="toggleDetail('${api.id}')">${api.url || '/'}${api.matchHeaders && Object.keys(api.matchHeaders).length > 0 ? ` <span class="match-headers-badge" title="匹配头: ${Object.keys(api.matchHeaders).join(', ')}">🎯${Object.keys(api.matchHeaders).length}</span>` : ''}</div>
+                <div class="api-url clickable-area" title="${api.url || ''}" onclick="toggleDetail('${api.id}')">${api.url || '/'}${api.responseRules && api.responseRules.length > 0 ? ` <span class="match-headers-badge" title="${api.responseRules.length} 条响应规则">🎯${api.responseRules.length}</span>` : ''}</div>
                 <div class="header-preview" onclick="openHeaders('${api.id}')" title="点击编辑">${Object.keys(api.headers || {}).length} 个头</div>
                 <div class="response-preview" onclick="openResponse('${api.id}')" title="点击编辑">${getResponsePreview(api)}</div>
                 <div class="update-time" title="${api.updatedAt || ''}">${formatTime(api.updatedAt)}</div>
@@ -164,7 +164,9 @@ function renderDetail(api, isEditing = false) {
 
     // 请求头也转义，防止注入
     const headersStr = escapeHtml(JSON.stringify(api.headers || {}, null, 2));
-    const matchHeadersStr = escapeHtml(JSON.stringify(api.matchHeaders || {}, null, 2));
+
+    // 响应规则
+    const rules = api.responseRules || [];
 
     return `
         <div class="detail-grid">
@@ -190,8 +192,22 @@ function renderDetail(api, isEditing = false) {
                 <textarea class="detail-textarea editable" id="headers-${api.id}" ${disabled} placeholder='{"Content-Type": "application/json"}'>${headersStr}</textarea>
             </div>
             <div class="detail-group full">
-                <label class="detail-label">请求匹配头 <span style="color:#999;font-weight:normal;font-size:11px;">（可选，相同URL时根据请求头返回不同数据）</span></label>
-                <textarea class="detail-textarea editable" id="matchHeaders-${api.id}" ${disabled} placeholder='{"X-Role": "admin", "X-Version": "2"}'>${matchHeadersStr === '{}' ? '' : matchHeadersStr}</textarea>
+                <label class="detail-label">响应规则 <span style="color:#999;font-weight:normal;font-size:11px;">（按顺序匹配请求头，首条命中返回；无匹配返回默认响应体）</span></label>
+                <div id="rules-${api.id}" class="response-rules">
+                    ${rules.map((rule, idx) => `
+                    <div class="rule-item" data-idx="${idx}">
+                        <div class="rule-header">
+                            <input type="text" class="detail-input rule-name" value="${escapeHtml(rule.name || '规则 ' + (idx + 1))}" placeholder="规则名称" ${disabled}>
+                            ${isEditing ? `<button type="button" class="btn btn-delete btn-small" onclick="removeRule('${api.id}', ${idx})">删除</button>` : ''}
+                        </div>
+                        <div class="rule-body">
+                            <textarea class="detail-textarea rule-match" placeholder='{"X-Role": "admin"}' ${disabled}>${escapeHtml(JSON.stringify(rule.matchHeaders || {}, null, 2))}</textarea>
+                            <textarea class="detail-textarea rule-response" placeholder='{"role": "admin"}' ${disabled}>${escapeHtml(rule.responseBody || '')}</textarea>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+                ${isEditing ? `<button type="button" class="btn btn-secondary btn-small" style="margin-top:6px;" onclick="addRule('${api.id}')">＋ 添加规则</button>` : ''}
             </div>
             <div class="detail-group full">
                 <label class="detail-label">响应类型</label>
@@ -233,6 +249,51 @@ function renderDetail(api, isEditing = false) {
 function populateTextarea(id, content) {
     const el = document.getElementById(`response-${id}`);
     if (el) el.value = content || '';
+}
+
+// 响应规则管理
+function addRule(apiId) {
+    const api = apis.find(a => a.id === apiId);
+    if (!api) return;
+    if (!api.responseRules) api.responseRules = [];
+    api.responseRules.push({ name: `规则 ${api.responseRules.length + 1}`, matchHeaders: {}, responseBody: '' });
+    const detailEl = document.getElementById(`detail-${apiId}`);
+    if (detailEl) {
+        const isEditing = editingIds.has(apiId);
+        detailEl.innerHTML = renderDetail(api, isEditing);
+        populateTextarea(apiId, api.responseBody || '');
+    }
+}
+
+function removeRule(apiId, idx) {
+    const api = apis.find(a => a.id === apiId);
+    if (!api || !api.responseRules) return;
+    api.responseRules.splice(idx, 1);
+    const detailEl = document.getElementById(`detail-${apiId}`);
+    if (detailEl) {
+        const isEditing = editingIds.has(apiId);
+        detailEl.innerHTML = renderDetail(api, isEditing);
+        populateTextarea(apiId, api.responseBody || '');
+    }
+}
+
+// 从编辑表单收集响应规则
+function collectRules(apiId) {
+    const container = document.getElementById(`rules-${apiId}`);
+    if (!container) return null;
+    const items = container.querySelectorAll('.rule-item');
+    const rules = [];
+    items.forEach((item, idx) => {
+        const name = item.querySelector('.rule-name')?.value?.trim() || '';
+        const matchStr = item.querySelector('.rule-match')?.value?.trim() || '{}';
+        const responseBody = item.querySelector('.rule-response')?.value || '';
+        let matchHeaders = {};
+        try { matchHeaders = JSON.parse(matchStr); } catch (e) {}
+        if (Object.keys(matchHeaders).length > 0 || responseBody) {
+            rules.push({ name: name || `规则 ${idx + 1}`, matchHeaders, responseBody });
+        }
+    });
+    return rules.length > 0 ? rules : null;
 }
 
 // 渲染分页
@@ -419,18 +480,8 @@ async function saveAPI(id) {
         return;
     }
 
-    // 请求匹配头（可选）
-    const matchHeadersVal = document.getElementById(`matchHeaders-${id}`)?.value?.trim() || '';
-    if (matchHeadersVal) {
-        try {
-            api.matchHeaders = JSON.parse(matchHeadersVal);
-        } catch (e) {
-            showToast('请求匹配头JSON格式错误', 'error');
-            return;
-        }
-    } else {
-        api.matchHeaders = null;
-    }
+    // 响应规则（可选）
+    api.responseRules = collectRules(id);
     
     // 获取响应类型
     const responseTypeSelect = document.getElementById(`responseType-${id}`);

@@ -16,6 +16,20 @@ impl Default for ResponseType {
     }
 }
 
+/// 响应规则：根据请求头条件返回不同数据
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResponseRule {
+    /// 规则名称（可选，方便识别）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// 匹配条件：请求头 key-value 全部满足才算命中
+    #[serde(rename = "matchHeaders")]
+    pub match_headers: HashMap<String, String>,
+    /// 命中时返回的响应体
+    #[serde(rename = "responseBody")]
+    pub response_body: String,
+}
+
 /// Mock API 接口定义
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockApi {
@@ -34,8 +48,9 @@ pub struct MockApi {
     pub file_path: Option<String>,
     #[serde(rename = "contentType", skip_serializing_if = "Option::is_none")]
     pub content_type: Option<String>,
-    #[serde(rename = "matchHeaders", skip_serializing_if = "Option::is_none")]
-    pub match_headers: Option<HashMap<String, String>>,
+    /// 响应规则列表（按顺序匹配，第一条命中即返回；无命中返回默认 response_body）
+    #[serde(rename = "responseRules", skip_serializing_if = "Option::is_none")]
+    pub response_rules: Option<Vec<ResponseRule>>,
     pub logs: Vec<LogEntry>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
@@ -58,7 +73,7 @@ impl MockApi {
             file_name: None,
             file_path: None,
             content_type: None,
-            match_headers: None,
+            response_rules: None,
             logs: Vec::new(),
             created_at: now.clone(),
             updated_at: now,
@@ -145,8 +160,8 @@ pub struct SaveApiRequest {
     pub file_path: Option<String>,
     #[serde(rename = "contentType")]
     pub content_type: Option<String>,
-    #[serde(rename = "matchHeaders")]
-    pub match_headers: Option<HashMap<String, String>>,
+    #[serde(rename = "responseRules")]
+    pub response_rules: Option<Vec<ResponseRule>>,
 }
 
 /// API删除请求
