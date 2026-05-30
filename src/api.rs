@@ -54,6 +54,7 @@ pub async fn save_api_handler(
                 api.file_name = req.file_name.clone();
                 api.file_path = req.file_path.clone();
                 api.content_type = req.content_type.clone();
+                api.match_headers = req.match_headers.clone();
                 api.created_at = now.clone();
                 api.updated_at = now.clone();
 
@@ -74,6 +75,7 @@ pub async fn save_api_handler(
                 api.file_name = req.file_name.clone();
                 api.file_path = req.file_path.clone();
                 api.content_type = req.content_type.clone();
+                api.match_headers = req.match_headers.clone();
                 api.updated_at = now;
 
                 match db::insert_api_at_top(&conn, &api) {
@@ -94,6 +96,7 @@ pub async fn save_api_handler(
             api.file_name = req.file_name.clone();
             api.file_path = req.file_path.clone();
             api.content_type = req.content_type.clone();
+            api.match_headers = req.match_headers.clone();
             api.updated_at = now;
 
             match db::insert_api_at_top(&conn, &api) {

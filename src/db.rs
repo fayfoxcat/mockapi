@@ -21,6 +21,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             file_name     TEXT,
             file_path     TEXT,
             content_type  TEXT,
+            match_headers TEXT,
             sort_order    INTEGER NOT NULL DEFAULT 0,
             created_at    TEXT NOT NULL,
             updated_at    TEXT NOT NULL
@@ -41,9 +42,24 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_logs_api_id ON request_logs(api_id);
+        CREATE INDEX IF NOT EXISTS idx_apis_url ON mock_apis(url);
         PRAGMA foreign_keys = ON;
         "
     )?;
+
+    // 兼容旧数据库：添加 match_headers 列
+    let has_column: bool = conn
+        .prepare("PRAGMA table_info(mock_apis)")?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .any(|col| col == "match_headers");
+
+    if !has_column {
+        conn.execute("ALTER TABLE mock_apis ADD COLUMN match_headers TEXT", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_apis_url ON mock_apis(url)", [])?;
+        info!("数据库升级：添加 match_headers 列");
+    }
+
     info!("数据库表初始化完成");
     Ok(())
 }
@@ -54,7 +70,6 @@ pub fn migrate_from_json(conn: &Connection, json_path: &Path) -> Result<bool> {
         return Ok(false);
     }
 
-    // 检查数据库是否已有数据
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM mock_apis", [], |row| row.get(0))?;
     if count > 0 {
         info!("数据库已有数据，跳过 JSON 迁移");
@@ -72,10 +87,9 @@ pub fn migrate_from_json(conn: &Connection, json_path: &Path) -> Result<bool> {
     let tx = conn.unchecked_transaction()?;
 
     for (i, api) in apis.iter().enumerate() {
-        // 插入 API
         tx.execute(
-            "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, sort_order, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, match_headers, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 api.id,
                 api.name,
@@ -90,13 +104,13 @@ pub fn migrate_from_json(conn: &Connection, json_path: &Path) -> Result<bool> {
                 api.file_name,
                 api.file_path,
                 api.content_type,
+                api.match_headers.as_ref().map(|h| serde_json::to_string(h).unwrap_or_default()),
                 i as i64,
                 api.created_at,
                 api.updated_at,
             ],
         )?;
 
-        // 插入日志
         for log in &api.logs {
             tx.execute(
                 "INSERT INTO request_logs (api_id, timestamp, method, url, headers, request_body, status_code, client_ip, user_agent, error)
@@ -119,7 +133,6 @@ pub fn migrate_from_json(conn: &Connection, json_path: &Path) -> Result<bool> {
 
     tx.commit()?;
 
-    // 重命名 JSON 文件为备份
     let backup_path = json_path.with_extension("json.bak");
     std::fs::rename(json_path, &backup_path)?;
     info!(
@@ -131,124 +144,123 @@ pub fn migrate_from_json(conn: &Connection, json_path: &Path) -> Result<bool> {
     Ok(true)
 }
 
+/// 内部函数：将一行数据库记录映射为 MockApi（不含日志和 match_headers）
+fn row_to_api(row: &rusqlite::Row) -> rusqlite::Result<MockApi> {
+    let headers_str: String = row.get(4)?;
+    let response_type_str: String = row.get(6)?;
+    let match_headers_str: Option<String> = row.get(10)?;
+
+    let headers: HashMap<String, String> = serde_json::from_str(&headers_str).unwrap_or_default();
+    let response_type = match response_type_str.as_str() {
+        "file" => ResponseType::File,
+        _ => ResponseType::Json,
+    };
+    let match_headers: Option<HashMap<String, String>> =
+        match_headers_str.and_then(|s| serde_json::from_str(&s).ok());
+
+    Ok(MockApi {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        method: row.get(2)?,
+        url: row.get(3)?,
+        headers,
+        response_body: row.get(5)?,
+        response_type,
+        file_name: row.get(7)?,
+        file_path: row.get(8)?,
+        content_type: row.get(9)?,
+        match_headers,
+        logs: Vec::new(),
+        created_at: row.get(11)?,
+        updated_at: row.get(12)?,
+    })
+}
+
+const API_SELECT_COLS: &str =
+    "id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, match_headers, created_at, updated_at";
+
 /// 加载所有 API（含日志）
 pub fn load_all_apis(conn: &Connection) -> Result<Vec<MockApi>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, created_at, updated_at
-         FROM mock_apis ORDER BY sort_order, created_at DESC"
-    )?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {} FROM mock_apis ORDER BY sort_order, created_at DESC",
+        API_SELECT_COLS
+    ))?;
 
-    let apis = stmt.query_map([], |row| {
-        let headers_str: String = row.get(4)?;
-        let response_type_str: String = row.get(6)?;
-        Ok((
-            row.get::<_, String>(0)?,   // id
-            row.get::<_, String>(1)?,   // name
-            row.get::<_, String>(2)?,   // method
-            row.get::<_, String>(3)?,   // url
-            headers_str,
-            row.get::<_, String>(5)?,   // response_body
-            response_type_str,
-            row.get::<_, Option<String>>(7)?,  // file_name
-            row.get::<_, Option<String>>(8)?,  // file_path
-            row.get::<_, Option<String>>(9)?,  // content_type
-            row.get::<_, String>(10)?, // created_at
-            row.get::<_, String>(11)?, // updated_at
-        ))
-    })?;
+    let apis = stmt.query_map([], row_to_api)?;
 
     let mut result = Vec::new();
     for api_row in apis {
-        let (id, name, method, url, headers_str, response_body, response_type_str, file_name, file_path, content_type, created_at, updated_at) = api_row?;
-
-        let headers: HashMap<String, String> = serde_json::from_str(&headers_str).unwrap_or_default();
-        let response_type = match response_type_str.as_str() {
-            "file" => ResponseType::File,
-            _ => ResponseType::Json,
-        };
-
-        // 加载该 API 的日志
-        let logs = load_logs_for_api(conn, &id)?;
-
-        result.push(MockApi {
-            id,
-            name,
-            method,
-            url,
-            headers,
-            response_body,
-            response_type,
-            file_name,
-            file_path,
-            content_type,
-            logs,
-            created_at,
-            updated_at,
-        });
+        let mut api = api_row?;
+        api.logs = load_logs_for_api(conn, &api.id)?;
+        result.push(api);
     }
 
     Ok(result)
 }
 
-/// 按 URL 查询单个 API（用于请求匹配，不加载日志）
-pub fn get_api_by_url(conn: &Connection, url: &str) -> Result<Option<MockApi>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, created_at, updated_at
-         FROM mock_apis WHERE url = ?1 LIMIT 1"
-    )?;
+/// 按 URL 查询所有匹配的 API（用于请求头条件路由）
+pub fn get_apis_by_url(conn: &Connection, url: &str) -> Result<Vec<MockApi>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {} FROM mock_apis WHERE url = ?1 ORDER BY sort_order",
+        API_SELECT_COLS
+    ))?;
 
-    let mut rows = stmt.query_map(params![url], |row| {
-        let headers_str: String = row.get(4)?;
-        let response_type_str: String = row.get(6)?;
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-            row.get::<_, String>(3)?,
-            headers_str,
-            row.get::<_, String>(5)?,
-            response_type_str,
-            row.get::<_, Option<String>>(7)?,
-            row.get::<_, Option<String>>(8)?,
-            row.get::<_, Option<String>>(9)?,
-            row.get::<_, String>(10)?,
-            row.get::<_, String>(11)?,
-        ))
-    })?;
+    let apis = stmt.query_map(params![url], row_to_api)?;
 
-    match rows.next() {
-        Some(row) => {
-            let (id, name, method, url, headers_str, response_body, response_type_str, file_name, file_path, content_type, created_at, updated_at) = row?;
-            let headers: HashMap<String, String> = serde_json::from_str(&headers_str).unwrap_or_default();
-            let response_type = match response_type_str.as_str() {
-                "file" => ResponseType::File,
-                _ => ResponseType::Json,
-            };
-            Ok(Some(MockApi {
-                id,
-                name,
-                method,
-                url,
-                headers,
-                response_body,
-                response_type,
-                file_name,
-                file_path,
-                content_type,
-                logs: Vec::new(),
-                created_at,
-                updated_at,
-            }))
-        }
-        None => Ok(None),
+    let mut result = Vec::new();
+    for api in apis {
+        result.push(api?);
     }
+    Ok(result)
+}
+
+/// 根据 URL 和请求头匹配最佳 API（精确匹配优先，无规则兜底）
+pub fn match_api_by_headers(
+    conn: &Connection,
+    url: &str,
+    req_headers: &HashMap<String, String>,
+) -> Result<Option<MockApi>> {
+    let candidates = get_apis_by_url(conn, url)?;
+
+    if candidates.is_empty() {
+        return Ok(None);
+    }
+
+    // 第一轮：精确匹配（有 match_headers 且所有规则都满足）
+    for api in &candidates {
+        if let Some(ref rules) = api.match_headers {
+            if !rules.is_empty() {
+                let all_match = rules.iter().all(|(key, expected)| {
+                    req_headers
+                        .get(&key.to_lowercase())
+                        .map(|v| v == expected)
+                        .unwrap_or(false)
+                });
+                if all_match {
+                    return Ok(Some(api.clone()));
+                }
+            }
+        }
+    }
+
+    // 第二轮：兜底（无 match_headers 或为空的）
+    for api in &candidates {
+        match &api.match_headers {
+            None => return Ok(Some(api.clone())),
+            Some(rules) if rules.is_empty() => return Ok(Some(api.clone())),
+            _ => {}
+        }
+    }
+
+    // 没有任何匹配
+    Ok(None)
 }
 
 /// 插入或更新 API
 pub fn upsert_api(conn: &Connection, api: &MockApi) -> Result<()> {
     conn.execute(
-        "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, sort_order, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM mock_apis), ?11, ?12)
+        "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, match_headers, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM mock_apis), ?12, ?13)
          ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             method = excluded.method,
@@ -259,6 +271,7 @@ pub fn upsert_api(conn: &Connection, api: &MockApi) -> Result<()> {
             file_name = excluded.file_name,
             file_path = excluded.file_path,
             content_type = excluded.content_type,
+            match_headers = excluded.match_headers,
             updated_at = excluded.updated_at",
         params![
             api.id,
@@ -274,6 +287,7 @@ pub fn upsert_api(conn: &Connection, api: &MockApi) -> Result<()> {
             api.file_name,
             api.file_path,
             api.content_type,
+            api.match_headers.as_ref().map(|h| serde_json::to_string(h).unwrap_or_default()),
             api.created_at,
             api.updated_at,
         ],
@@ -283,12 +297,10 @@ pub fn upsert_api(conn: &Connection, api: &MockApi) -> Result<()> {
 
 /// 插入 API 到顶部（新创建时使用）
 pub fn insert_api_at_top(conn: &Connection, api: &MockApi) -> Result<()> {
-    // 先将所有 sort_order +1
     conn.execute("UPDATE mock_apis SET sort_order = sort_order + 1", [])?;
-    // 插入新 API，sort_order = 0
     conn.execute(
-        "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, sort_order, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12)",
+        "INSERT INTO mock_apis (id, name, method, url, headers, response_body, response_type, file_name, file_path, content_type, match_headers, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?13)",
         params![
             api.id,
             api.name,
@@ -303,6 +315,7 @@ pub fn insert_api_at_top(conn: &Connection, api: &MockApi) -> Result<()> {
             api.file_name,
             api.file_path,
             api.content_type,
+            api.match_headers.as_ref().map(|h| serde_json::to_string(h).unwrap_or_default()),
             api.created_at,
             api.updated_at,
         ],
@@ -325,7 +338,6 @@ pub fn reorder_apis(conn: &Connection, ids: &[String]) -> Result<()> {
             params![i as i64, id],
         )?;
     }
-    // 未在列表中的放到末尾
     let max_order = ids.len() as i64;
     tx.execute(
         "UPDATE mock_apis SET sort_order = ?1 + rowid WHERE id NOT IN (SELECT value FROM json_each(?2))",
@@ -354,7 +366,6 @@ pub fn add_log(conn: &Connection, api_id: &str, log: &LogEntry) -> Result<()> {
         ],
     )?;
 
-    // 保持每个 API 最多 100 条日志
     conn.execute(
         "DELETE FROM request_logs WHERE api_id = ?1 AND id NOT IN (
             SELECT id FROM request_logs WHERE api_id = ?1 ORDER BY id DESC LIMIT 100
@@ -376,7 +387,6 @@ pub fn clear_logs(conn: &Connection, api_id: &str) -> Result<()> {
     Ok(())
 }
 
-/// 内部函数：加载指定 API 的日志
 fn load_logs_for_api(conn: &Connection, api_id: &str) -> Result<Vec<LogEntry>> {
     let mut stmt = conn.prepare(
         "SELECT timestamp, method, url, headers, request_body, status_code, client_ip, user_agent, error

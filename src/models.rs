@@ -34,6 +34,8 @@ pub struct MockApi {
     pub file_path: Option<String>,
     #[serde(rename = "contentType", skip_serializing_if = "Option::is_none")]
     pub content_type: Option<String>,
+    #[serde(rename = "matchHeaders", skip_serializing_if = "Option::is_none")]
+    pub match_headers: Option<HashMap<String, String>>,
     pub logs: Vec<LogEntry>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
@@ -56,6 +58,7 @@ impl MockApi {
             file_name: None,
             file_path: None,
             content_type: None,
+            match_headers: None,
             logs: Vec::new(),
             created_at: now.clone(),
             updated_at: now,
@@ -142,6 +145,8 @@ pub struct SaveApiRequest {
     pub file_path: Option<String>,
     #[serde(rename = "contentType")]
     pub content_type: Option<String>,
+    #[serde(rename = "matchHeaders")]
+    pub match_headers: Option<HashMap<String, String>>,
 }
 
 /// API删除请求

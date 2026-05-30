@@ -113,7 +113,7 @@ function renderList() {
                 <button class="expand-btn ${isExpanded ? 'expanded' : ''}" id="expand-${api.id}" onclick="toggleDetail('${api.id}')">▶</button>
                 <div class="api-name clickable-area" title="${api.name || ''}" onclick="toggleDetail('${api.id}')">${api.name || '未命名'}</div>
                 <span class="method-badge method-${api.method} clickable-area" onclick="toggleDetail('${api.id}')">${api.method}</span>
-                <div class="api-url clickable-area" title="${api.url || ''}" onclick="toggleDetail('${api.id}')">${api.url || '/'}</div>
+                <div class="api-url clickable-area" title="${api.url || ''}" onclick="toggleDetail('${api.id}')">${api.url || '/'}${api.matchHeaders && Object.keys(api.matchHeaders).length > 0 ? ` <span class="match-headers-badge" title="匹配头: ${Object.keys(api.matchHeaders).join(', ')}">🎯${Object.keys(api.matchHeaders).length}</span>` : ''}</div>
                 <div class="header-preview" onclick="openHeaders('${api.id}')" title="点击编辑">${Object.keys(api.headers || {}).length} 个头</div>
                 <div class="response-preview" onclick="openResponse('${api.id}')" title="点击编辑">${getResponsePreview(api)}</div>
                 <div class="update-time" title="${api.updatedAt || ''}">${formatTime(api.updatedAt)}</div>
@@ -164,6 +164,7 @@ function renderDetail(api, isEditing = false) {
 
     // 请求头也转义，防止注入
     const headersStr = escapeHtml(JSON.stringify(api.headers || {}, null, 2));
+    const matchHeadersStr = escapeHtml(JSON.stringify(api.matchHeaders || {}, null, 2));
 
     return `
         <div class="detail-grid">
@@ -185,8 +186,12 @@ function renderDetail(api, isEditing = false) {
                 <input type="text" class="detail-input editable" id="url-${api.id}" value="${escapeHtml(api.url || '')}" ${disabled} placeholder="/api/example">
             </div>
             <div class="detail-group full">
-                <label class="detail-label">请求头 (JSON格式)</label>
+                <label class="detail-label">响应头 (JSON格式)</label>
                 <textarea class="detail-textarea editable" id="headers-${api.id}" ${disabled} placeholder='{"Content-Type": "application/json"}'>${headersStr}</textarea>
+            </div>
+            <div class="detail-group full">
+                <label class="detail-label">请求匹配头 <span style="color:#999;font-weight:normal;font-size:11px;">（可选，相同URL时根据请求头返回不同数据）</span></label>
+                <textarea class="detail-textarea editable" id="matchHeaders-${api.id}" ${disabled} placeholder='{"X-Role": "admin", "X-Version": "2"}'>${matchHeadersStr === '{}' ? '' : matchHeadersStr}</textarea>
             </div>
             <div class="detail-group full">
                 <label class="detail-label">响应类型</label>
@@ -410,8 +415,21 @@ async function saveAPI(id) {
     try {
         api.headers = JSON.parse(document.getElementById(`headers-${id}`)?.value || '{}');
     } catch (e) {
-        showToast('请求头JSON格式错误', 'error');
+        showToast('响应头JSON格式错误', 'error');
         return;
+    }
+
+    // 请求匹配头（可选）
+    const matchHeadersVal = document.getElementById(`matchHeaders-${id}`)?.value?.trim() || '';
+    if (matchHeadersVal) {
+        try {
+            api.matchHeaders = JSON.parse(matchHeadersVal);
+        } catch (e) {
+            showToast('请求匹配头JSON格式错误', 'error');
+            return;
+        }
+    } else {
+        api.matchHeaders = null;
     }
     
     // 获取响应类型

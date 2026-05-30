@@ -58,10 +58,17 @@ pub async fn dynamic_handler(
         }
     }
 
-    // 从数据库查找匹配的API
+    // 从数据库查找匹配的API（支持请求头条件路由）
     let matched_api = {
         let conn = state.db.lock().unwrap();
-        db::get_api_by_url(&conn, path).ok().flatten()
+        // 构建请求头 map（key 统一小写）
+        let mut req_headers = HashMap::new();
+        for (key, value) in headers.iter() {
+            if let Ok(v) = value.to_str() {
+                req_headers.insert(key.to_string().to_lowercase(), v.to_string());
+            }
+        }
+        db::match_api_by_headers(&conn, path, &req_headers).ok().flatten()
     };
 
     if let Some(api) = matched_api {
