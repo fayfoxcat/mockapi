@@ -229,6 +229,7 @@ function renderDetail(api, isEditing = false) {
                                     <input type="text" class="rule-name-input" value="${escapeHtml(rule.name || '规则 ' + (idx + 1))}" placeholder="规则名称">
                                     <span class="rule-match-preview" title="${escapeHtml(matchPreview)}">${escapeHtml(matchPreview)}</span>
                                     <div class="rule-row-actions">
+                                        <button type="button" class="btn-icon" onclick="copyRuleCurl('${api.id}', ${idx})" title="复制CURL">📋</button>
                                         <button type="button" class="btn-icon" onclick="toggleRuleExpand('${api.id}', ${idx})" title="${isRuleExpanded ? '折叠' : '展开'}">${isRuleExpanded ? '▲' : '▼'}</button>
                                         <button type="button" class="btn-icon delete" onclick="removeRule('${api.id}', ${idx})" title="删除">✕</button>
                                     </div>
@@ -959,6 +960,42 @@ function copyCurl(id) {
         });
     } else {
         // 降级方案：使用传统方法
+        fallbackCopyTextToClipboard(curlCmd);
+    }
+}
+
+// 复制单条规则的 CURL 命令（包含该规则的匹配请求头）
+function copyRuleCurl(apiId, ruleIdx) {
+    const api = apis.find(a => a.id === apiId);
+    if (!api || !api.responseRules || !api.responseRules[ruleIdx]) return;
+    const rule = api.responseRules[ruleIdx];
+
+    let curlCmd = `curl -X ${api.method}`;
+    curlCmd += ` "http://${window.location.hostname}:${window.location.port || '8344'}${api.url}"`;
+
+    // 添加 API 本身的响应头
+    if (api.headers && Object.keys(api.headers).length > 0) {
+        for (const [key, value] of Object.entries(api.headers)) {
+            curlCmd += ` \\\n  -H "${key}: ${value}"`;
+        }
+    }
+
+    // 添加规则的匹配请求头
+    if (rule.matchHeaders && Object.keys(rule.matchHeaders).length > 0) {
+        for (const [key, value] of Object.entries(rule.matchHeaders)) {
+            curlCmd += ` \\\n  -H "${key}: ${value}"`;
+        }
+    }
+
+    if (['POST', 'PUT', 'DELETE'].includes(api.method)) {
+        curlCmd += ` \\\n  -d '{"key": "value"}'`;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(curlCmd).then(() => {
+            showToast(`已复制 "${rule.name || '规则 ' + (ruleIdx+1)}" 的 CURL 命令`, 'success');
+        }).catch(() => fallbackCopyTextToClipboard(curlCmd));
+    } else {
         fallbackCopyTextToClipboard(curlCmd);
     }
 }
